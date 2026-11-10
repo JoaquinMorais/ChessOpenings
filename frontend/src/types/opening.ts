@@ -1,5 +1,7 @@
 export type OpeningColor = "white" | "black";
 
+export type ImportConflict = "reject" | "replace" | "duplicate";
+
 export interface OpeningSummary {
   id: number;
   name: string;

@@ -1,13 +1,17 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { ChangeEvent } from "react";
 import { Link } from "react-router-dom";
 
 import { ApiError } from "../api/client";
 import {
   createOpening,
   deleteOpening,
+  getOpeningExport,
+  importOpening,
   listOpenings,
   renameOpening,
 } from "../api/openings";
+import ImportConflictDialog from "../components/ImportConflictDialog";
 import OpeningForm from "../components/OpeningForm";
 import type { OpeningColor, OpeningSummary } from "../types/opening";
 
@@ -41,6 +45,11 @@ function formatAccuracy(accuracy: number | null): string {
   return accuracy === null ? "—" : `${accuracy.toFixed(1)}%`;
 }
 
+function sanitizeFileName(name: string): string {
+  const sanitized = name.replace(/[\\/:*?"<>|]/g, "_").trim();
+  return sanitized || "opening";
+}
+
 function OpeningsPage() {
   const [list, setList] = useState<ListState>({ status: "loading" });
   const [form, setForm] = useState<FormState>(null);
@@ -48,6 +57,16 @@ function OpeningsPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [exportingId, setExportingId] = useState<number | null>(null);
+  const [ioError, setIoError] = useState<string | null>(null);
+  const [ioSuccess, setIoSuccess] = useState<string | null>(null);
+  const [pendingImport, setPendingImport] = useState<{
+    payload: unknown;
+    fileName: string;
+  } | null>(null);
+  const [importBusy, setImportBusy] = useState(false);
+  const [conflictError, setConflictError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadOpenings = useCallback(async () => {
     setList({ status: "loading" });
@@ -125,6 +144,95 @@ function OpeningsPage() {
     }
   };
 
+  const handleExport = async (opening: OpeningSummary) => {
+    setExportingId(opening.id);
+    setIoError(null);
+    setIoSuccess(null);
+    try {
+      const data = await getOpeningExport(opening.id);
+      const blob = new Blob([JSON.stringify(data, null, 2)], {
+        type: "application/json",
+      });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `${sanitizeFileName(opening.name)}.json`;
+      document.body.append(anchor);
+      anchor.click();
+      anchor.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 0);
+      setIoSuccess(`Apertura exportada: "${opening.name}".`);
+    } catch (error) {
+      setIoError(getErrorMessage(error));
+    } finally {
+      setExportingId(null);
+    }
+  };
+
+  const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!file) {
+      return;
+    }
+
+    setIoError(null);
+    setIoSuccess(null);
+
+    let payload: unknown;
+    try {
+      payload = JSON.parse(await file.text());
+    } catch {
+      setIoError("El archivo no contiene un JSON válido.");
+      return;
+    }
+
+    setImportBusy(true);
+    try {
+      const imported = await importOpening(payload);
+      setIoSuccess(`Opening importado como "${imported.name}".`);
+      await loadOpenings();
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 409) {
+        setPendingImport({ payload, fileName: file.name });
+        setConflictError(null);
+      } else {
+        setIoError(getErrorMessage(error));
+      }
+    } finally {
+      setImportBusy(false);
+    }
+  };
+
+  const handleConflict = async (mode: "replace" | "duplicate") => {
+    if (!pendingImport) {
+      return;
+    }
+
+    setImportBusy(true);
+    setConflictError(null);
+    try {
+      const imported = await importOpening(pendingImport.payload, mode);
+      setPendingImport(null);
+      setIoError(null);
+      setIoSuccess(`Opening importado como "${imported.name}".`);
+      await loadOpenings();
+    } catch (error) {
+      setConflictError(getErrorMessage(error));
+    } finally {
+      setImportBusy(false);
+    }
+  };
+
+  const handleCancelConflict = () => {
+    if (importBusy) {
+      return;
+    }
+    setPendingImport(null);
+    setConflictError(null);
+  };
+
   return (
     <section className="page">
       <div className="page-toolbar">
@@ -133,9 +241,26 @@ function OpeningsPage() {
           <h2>Aperturas</h2>
           <p>Gestiona tus repertorios y empieza a entrenar.</p>
         </div>
-        <button type="button" className="button" onClick={openCreateForm}>
-          Nuevo opening
-        </button>
+        <div className="toolbar-actions">
+          <button
+            type="button"
+            className="button button--ghost"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={importBusy || pendingImport !== null}
+          >
+            {importBusy ? "Importando..." : "Importar"}
+          </button>
+          <button type="button" className="button" onClick={openCreateForm}>
+            Nuevo opening
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".json,application/json"
+            className="file-input"
+            onChange={(event) => void handleFileChange(event)}
+          />
+        </div>
       </div>
 
       {form && (
@@ -171,6 +296,24 @@ function OpeningsPage() {
         <div className="alert" role="alert">
           <p>{actionError}</p>
           <button type="button" onClick={() => setActionError(null)}>
+            Cerrar
+          </button>
+        </div>
+      )}
+
+      {ioSuccess && (
+        <div className="alert alert--success" role="status">
+          <p>{ioSuccess}</p>
+          <button type="button" onClick={() => setIoSuccess(null)}>
+            Cerrar
+          </button>
+        </div>
+      )}
+
+      {ioError && (
+        <div className="alert" role="alert">
+          <p>{ioError}</p>
+          <button type="button" onClick={() => setIoError(null)}>
             Cerrar
           </button>
         </div>
@@ -239,6 +382,14 @@ function OpeningsPage() {
                 <button
                   type="button"
                   className="button button--small button--ghost"
+                  onClick={() => void handleExport(opening)}
+                  disabled={exportingId === opening.id}
+                >
+                  {exportingId === opening.id ? "Exportando..." : "Exportar"}
+                </button>
+                <button
+                  type="button"
+                  className="button button--small button--ghost"
                   onClick={() => openRenameForm(opening)}
                 >
                   Renombrar
@@ -255,6 +406,17 @@ function OpeningsPage() {
             </li>
           ))}
         </ul>
+      )}
+
+      {pendingImport && (
+        <ImportConflictDialog
+          fileName={pendingImport.fileName}
+          busy={importBusy}
+          error={conflictError}
+          onReplace={() => void handleConflict("replace")}
+          onDuplicate={() => void handleConflict("duplicate")}
+          onCancel={handleCancelConflict}
+        />
       )}
     </section>
   );

@@ -1,5 +1,6 @@
 import { apiFetch } from "./client";
 import type {
+  ImportConflict,
   OpeningCreatePayload,
   OpeningRenamePayload,
   OpeningSummary,
@@ -35,5 +36,20 @@ export function renameOpening(
 export function deleteOpening(openingId: number): Promise<void> {
   return apiFetch<void>(`/openings/${openingId}`, {
     method: "DELETE",
+  });
+}
+
+export function getOpeningExport(openingId: number): Promise<unknown> {
+  return apiFetch<unknown>(`/openings/${openingId}/export`);
+}
+
+export function importOpening(
+  payload: unknown,
+  onConflict: ImportConflict = "reject",
+): Promise<OpeningSummary> {
+  const query = new URLSearchParams({ on_conflict: onConflict });
+  return apiFetch<OpeningSummary>(`/openings/import?${query.toString()}`, {
+    method: "POST",
+    body: JSON.stringify(payload),
   });
 }

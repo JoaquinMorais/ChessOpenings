@@ -708,3 +708,74 @@ button {
   color: #617064;
   font-size: 0.82rem;
 }
+
+.toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.file-input {
+  display: none;
+}
+
+.alert--success {
+  border-color: rgba(47, 125, 74, 0.3);
+  background: rgba(47, 125, 74, 0.08);
+  color: #245c39;
+}
+
+.alert--success button {
+  background: #2f7d4a;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  background: rgba(22, 33, 27, 0.45);
+}
+
+.modal {
+  width: min(100%, 30rem);
+  padding: 1.5rem;
+  border-radius: 1.1rem;
+  border: 1px solid rgba(22, 33, 27, 0.14);
+  background: #fbfcf8;
+  box-shadow: 0 30px 70px rgba(22, 33, 27, 0.25);
+}
+
+.modal h3 {
+  margin-bottom: 0.6rem;
+  font-size: 1.35rem;
+}
+
+.modal > p {
+  color: #536256;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-top: 1.2rem;
+}
+
+@media (max-width: 640px) {
+  .toolbar-actions {
+    width: 100%;
+  }
+
+  .modal-actions {
+    justify-content: stretch;
+  }
+
+  .modal-actions .button {
+    flex: 1 1 auto;
+  }
+}

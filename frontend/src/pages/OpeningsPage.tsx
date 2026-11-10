@@ -379,6 +379,12 @@ function OpeningsPage() {
                 >
                   Entrenar
                 </Link>
+                <Link
+                  className="button button--small button--ghost"
+                  to={`/openings/${opening.id}/stats`}
+                >
+                  Estadísticas
+                </Link>
                 <button
                   type="button"
                   className="button button--small button--ghost"

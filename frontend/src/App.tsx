@@ -3,6 +3,7 @@ import { Route, Routes } from "react-router-dom";
 import Layout from "./components/Layout";
 import HomePage from "./pages/HomePage";
 import OpeningEditorPage from "./pages/OpeningEditorPage";
+import OpeningStatsPage from "./pages/OpeningStatsPage";
 import OpeningsPage from "./pages/OpeningsPage";
 import PlaceholderPage from "./pages/PlaceholderPage";
 import TrainingPage from "./pages/TrainingPage";
@@ -15,6 +16,7 @@ function App() {
         <Route path="/openings" element={<OpeningsPage />} />
         <Route path="/openings/:id/edit" element={<OpeningEditorPage />} />
         <Route path="/openings/:id/train" element={<TrainingPage />} />
+        <Route path="/openings/:id/stats" element={<OpeningStatsPage />} />
         <Route path="/training" element={<PlaceholderPage title="Entrenar" />} />
         <Route path="/stats" element={<PlaceholderPage title="Estadísticas" />} />
         <Route

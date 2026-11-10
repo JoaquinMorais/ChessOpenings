@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { Chess, type Move, type Square } from "chess.js";
+import { Chess } from "chess.js";
 
 import { ApiError } from "../api/client";
 import { addMove, deleteNode, getTree, makeMain } from "../api/nodes";
 import { getOpening } from "../api/openings";
-import OpeningBoard from "../components/OpeningBoard";
+import ChessBoardView from "../components/ChessBoardView";
+import type { BoardLastMove, BoardMove } from "../components/ChessBoardView";
 import VariationTree, {
   formatMoveLabel,
 } from "../components/VariationTree";
@@ -91,6 +92,13 @@ function countSubtree(node: TreeNode): number {
   );
 }
 
+function uciToLastMove(uci: string | null): BoardLastMove | null {
+  if (!uci) {
+    return null;
+  }
+  return { from: uci.slice(0, 2), to: uci.slice(2, 4) };
+}
+
 function OpeningEditorPage() {
   const { id } = useParams<{ id: string }>();
   const openingId = Number(id);
@@ -160,6 +168,7 @@ function OpeningEditorPage() {
       ? index.byId.get(currentNodeId) ?? null
       : null;
   const currentFen = currentNode?.fen ?? tree?.fen ?? null;
+  const currentLastMove = uciToLastMove(currentNode?.uci ?? null);
   const turn = currentFen ? new Chess(currentFen).turn() : null;
   const isUserTurn =
     opening && turn
@@ -204,36 +213,15 @@ function OpeningEditorPage() {
     [],
   );
 
-  const handlePieceDrop = (
-    sourceSquare: string,
-    targetSquare: string,
-  ): boolean => {
+  const handleMove = (move: BoardMove): boolean => {
     if (!opening || !currentNode || saving || branchBusy) {
       return false;
     }
 
-    const game = new Chess(currentNode.fen);
-    let move: Move | null = null;
-    try {
-      const from = sourceSquare as Square;
-      const to = targetSquare as Square;
-      const piece = game.get(from);
-      const isPromotion =
-        piece?.type === "p" && (to[1] === "8" || to[1] === "1");
-      move = game.move({
-        from,
-        to,
-        promotion: isPromotion ? "q" : undefined,
-      });
-    } catch {
-      return false;
-    }
-
-    if (!move) {
-      return false;
-    }
-
-    const uci = `${move.from}${move.to}${move.promotion ?? ""}`;
+    const uci =
+      typeof move === "string"
+        ? move
+        : `${move.from}${move.to}${move.promotion ?? ""}`;
     const existing = currentNode.children.find((child) => child.uci === uci);
     if (existing) {
       setCurrentNodeId(existing.id);
@@ -420,11 +408,12 @@ function OpeningEditorPage() {
 
       <div className="editor-layout">
         <div className="editor-board">
-          <OpeningBoard
+          <ChessBoardView
             fen={currentFen}
             orientation={orientation}
             disabled={saving || branchBusy}
-            onPieceDrop={handlePieceDrop}
+            lastMove={currentLastMove}
+            onMove={handleMove}
           />
           {(saving || branchBusy) && (
             <p className="state-message">

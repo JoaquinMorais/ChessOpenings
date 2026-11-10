@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { CSSProperties } from "react";
 import { Link, useParams } from "react-router-dom";
-import { Chess, type Move, type Square } from "chess.js";
+import { Chess, type Move } from "chess.js";
 
 import { ApiError } from "../api/client";
 import { getOpening } from "../api/openings";
@@ -10,7 +9,8 @@ import {
   createTrainingSession,
   getTrainingSession,
 } from "../api/training";
-import OpeningBoard from "../components/OpeningBoard";
+import ChessBoardView from "../components/ChessBoardView";
+import type { BoardLastMove, BoardMove } from "../components/ChessBoardView";
 import type { OpeningSummary } from "../types/opening";
 import type {
   TrainingQuestionStep,
@@ -68,13 +68,16 @@ function trainingSessionKey(openingId: number): string {
   return `chess-openings-training-session-${openingId}`;
 }
 
-function highlightSquares(uci: string): Record<string, CSSProperties> {
-  const from = uci.slice(0, 2);
-  const to = uci.slice(2, 4);
-  return {
-    [from]: { backgroundColor: "rgba(240, 165, 0, 0.55)" },
-    [to]: { backgroundColor: "rgba(240, 165, 0, 0.7)" },
-  };
+function uciToLastMove(uci: string | null | undefined): BoardLastMove | null {
+  if (!uci) {
+    return null;
+  }
+  return { from: uci.slice(0, 2), to: uci.slice(2, 4) };
+}
+
+function lastMoveFromLeadIn(step: TrainingQuestionStep): BoardLastMove | null {
+  const move = step.lead_in[step.lead_in.length - 1];
+  return move ? uciToLastMove(move.uci) : null;
 }
 
 function TrainingPage() {
@@ -90,9 +93,7 @@ function TrainingPage() {
     null,
   );
   const [feedback, setFeedback] = useState<IncorrectFeedback | null>(null);
-  const [squareStyles, setSquareStyles] = useState<
-    Record<string, CSSProperties>
-  >({});
+  const [lastMove, setLastMove] = useState<BoardLastMove | null>(null);
   const [boardWidth, setBoardWidth] = useState(getBoardWidth);
   const animationTokenRef = useRef(0);
   const startedForRef = useRef<string | null>(null);
@@ -109,7 +110,7 @@ function TrainingPage() {
       animationTokenRef.current = token;
       setError(null);
       setFeedback(null);
-      setSquareStyles({});
+      setLastMove(null);
       setStep(nextStep);
 
       if (nextStep.kind === "finished") {
@@ -140,6 +141,7 @@ function TrainingPage() {
         }
 
         setBoardFen(game.fen());
+        setLastMove(uciToLastMove(move.uci));
         if (!move.fast_forward) {
           await sleep(RIVAL_DELAY);
           if (animationTokenRef.current !== token) {
@@ -165,7 +167,7 @@ function TrainingPage() {
       setResumeSession(null);
       setFeedback(null);
       setStep(null);
-      setSquareStyles({});
+      setLastMove(null);
       setBoardFen(INITIAL_FEN);
 
       try {
@@ -275,13 +277,14 @@ function TrainingPage() {
         try {
           correction.move(correctUci);
           setBoardFen(correction.fen());
+          setLastMove(uciToLastMove(correctUci));
         } catch {
           setBoardFen(question.fen);
+          setLastMove(lastMoveFromLeadIn(question));
         }
-        setSquareStyles(highlightSquares(correctUci));
       } else {
         setBoardFen(question.fen);
-        setSquareStyles({});
+        setLastMove(lastMoveFromLeadIn(question));
       }
 
       setFeedback({
@@ -291,16 +294,13 @@ function TrainingPage() {
       setPhase("incorrect");
     } catch (error) {
       setBoardFen(question.fen);
-      setSquareStyles({});
+      setLastMove(lastMoveFromLeadIn(question));
       setError(getErrorMessage(error));
       setPhase("question");
     }
   };
 
-  const handlePieceDrop = (
-    sourceSquare: string,
-    targetSquare: string,
-  ): boolean => {
+  const handleMove = (move: BoardMove): boolean => {
     if (
       phase !== "question" ||
       !step ||
@@ -311,30 +311,24 @@ function TrainingPage() {
     }
 
     const question = step;
+    const uci =
+      typeof move === "string"
+        ? move
+        : `${move.from}${move.to}${move.promotion ?? ""}`;
     const game = new Chess(question.fen);
-    let move: Move | null = null;
+    let applied: Move | null = null;
     try {
-      const from = sourceSquare as Square;
-      const to = targetSquare as Square;
-      const piece = game.get(from);
-      const isPromotion =
-        piece?.type === "p" && (to[1] === "8" || to[1] === "1");
-      move = game.move({
-        from,
-        to,
-        promotion: isPromotion ? "q" : undefined,
-      });
+      applied = game.move(uci);
     } catch {
+      applied = null;
+    }
+
+    if (!applied) {
       return false;
     }
 
-    if (!move) {
-      return false;
-    }
-
-    const uci = `${move.from}${move.to}${move.promotion ?? ""}`;
     setBoardFen(game.fen());
-    setSquareStyles({});
+    setLastMove(uciToLastMove(uci));
     setFeedback(null);
     setError(null);
     setPhase("answering");
@@ -366,7 +360,6 @@ function TrainingPage() {
     }
     const nextStep = feedback.nextStep;
     setFeedback(null);
-    setSquareStyles({});
     void runStep(nextStep);
   };
 
@@ -502,13 +495,13 @@ function TrainingPage() {
     <section className="page training-page">
       <div className="training-layout">
         <div className="training-board">
-          <OpeningBoard
+          <ChessBoardView
             fen={boardFen}
             orientation={orientation}
             disabled={phase !== "question"}
-            squareStyles={squareStyles}
+            lastMove={lastMove}
             boardWidth={boardWidth}
-            onPieceDrop={handlePieceDrop}
+            onMove={handleMove}
           />
         </div>
 

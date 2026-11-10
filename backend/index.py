@@ -4,7 +4,8 @@ from fastapi import Depends, FastAPI
 from sqlalchemy import text
 from sqlmodel import Session
 
-from config.database import create_db_and_tables, engine, get_session
+from config.database import engine, get_session
+from config.migrations import run_migrations
 from routes.io import router as io_router
 from routes.nodes import router as nodes_router
 from routes.openings import router as openings_router
@@ -19,7 +20,7 @@ import models.training  # noqa: F401
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    create_db_and_tables()
+    run_migrations()
     with Session(engine) as session:
         load_seed(session)
     yield

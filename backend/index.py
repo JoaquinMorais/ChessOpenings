@@ -6,6 +6,7 @@ from sqlmodel import Session
 
 from config.database import create_db_and_tables, engine, get_session
 from routes.io import router as io_router
+from utils.seed import load_seed
 from routes.nodes import router as nodes_router
 from routes.openings import router as openings_router
 
@@ -17,6 +18,8 @@ import models.training  # noqa: F401
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     create_db_and_tables()
+    with Session(engine) as session:
+        load_seed(session)
     yield
 
 

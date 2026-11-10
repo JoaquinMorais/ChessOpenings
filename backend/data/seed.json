@@ -1,0 +1,111 @@
+{
+  "openings": [
+    {
+      "format": "chess-openings-trainer",
+      "version": 1,
+      "opening": {
+        "name": "Elephant Gambit",
+        "color": "black",
+        "tree": {
+          "children": [
+            {
+              "san": "e4",
+              "comment": null,
+              "children": [
+                {
+                  "san": "e5",
+                  "comment": null,
+                  "children": [
+                    {
+                      "san": "Nf3",
+                      "comment": null,
+                      "children": [
+                        { "san": "d5", "comment": null, "children": [] }
+                      ]
+                    },
+                    {
+                      "san": "Bc4",
+                      "comment": null,
+                      "children": [
+                        { "san": "Nf6", "comment": null, "children": [] }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "san": "d4",
+              "comment": null,
+              "children": [
+                {
+                  "san": "d5",
+                  "comment": null,
+                  "children": [
+                    {
+                      "san": "c4",
+                      "comment": null,
+                      "children": [
+                        { "san": "e6", "comment": null, "children": [] }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "format": "chess-openings-trainer",
+      "version": 1,
+      "opening": {
+        "name": "Italian Game",
+        "color": "white",
+        "tree": {
+          "children": [
+            {
+              "san": "e4",
+              "comment": null,
+              "children": [
+                {
+                  "san": "e5",
+                  "comment": null,
+                  "children": [
+                    {
+                      "san": "Nf3",
+                      "comment": null,
+                      "children": [
+                        {
+                          "san": "Nc6",
+                          "comment": null,
+                          "children": [
+                            { "san": "Bc4", "comment": null, "children": [] }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "san": "c5",
+                  "comment": null,
+                  "children": [
+                    {
+                      "san": "Nf3",
+                      "comment": null,
+                      "children": [
+                        { "san": "d6", "comment": null, "children": [] }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

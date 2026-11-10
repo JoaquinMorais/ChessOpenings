@@ -5,6 +5,7 @@ import HomePage from "./pages/HomePage";
 import OpeningEditorPage from "./pages/OpeningEditorPage";
 import OpeningsPage from "./pages/OpeningsPage";
 import PlaceholderPage from "./pages/PlaceholderPage";
+import TrainingPage from "./pages/TrainingPage";
 
 function App() {
   return (
@@ -13,10 +14,7 @@ function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="/openings" element={<OpeningsPage />} />
         <Route path="/openings/:id/edit" element={<OpeningEditorPage />} />
-        <Route
-          path="/openings/:id/train"
-          element={<PlaceholderPage title="Entrenar apertura" />}
-        />
+        <Route path="/openings/:id/train" element={<TrainingPage />} />
         <Route path="/training" element={<PlaceholderPage title="Entrenar" />} />
         <Route path="/stats" element={<PlaceholderPage title="Estadísticas" />} />
         <Route

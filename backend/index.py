@@ -6,6 +6,10 @@ from sqlmodel import Session
 
 from config.database import create_db_and_tables, engine, get_session
 
+import models.node  # noqa: F401
+import models.opening  # noqa: F401
+import models.training  # noqa: F401
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

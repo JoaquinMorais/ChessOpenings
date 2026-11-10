@@ -20,3 +20,17 @@ class NodeRead(BaseModel):
     ply: int
     order_index: int
     comment: Optional[str] = None
+
+
+class NodeTree(BaseModel):
+    id: int
+    san: Optional[str] = None
+    uci: Optional[str] = None
+    fen: str
+    ply: int
+    order_index: int
+    comment: Optional[str] = None
+    children: list["NodeTree"] = []
+
+
+NodeTree.model_rebuild()

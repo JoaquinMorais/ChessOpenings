@@ -1,54 +1,51 @@
-import os
-
-os.environ["DATABASE_URL"] = "sqlite:///:memory:"
-
-from sqlalchemy import event
-from sqlalchemy.pool import StaticPool
-from sqlmodel import Session, SQLModel, create_engine
+from sqlalchemy import text
+from sqlmodel import Session, SQLModel
 from fastapi.testclient import TestClient
 
 import pytest
 
-from config.database import get_session
+from config.database import engine
+from config.settings import settings
 from index import app
 
 import models.node  # noqa: F401
 import models.opening  # noqa: F401
 import models.training  # noqa: F401
 
-engine = create_engine(
-    "sqlite:///:memory:",
-    connect_args={"check_same_thread": False},
-    poolclass=StaticPool,
-)
+if "chess_test" not in settings.database_url:
+    raise RuntimeError(
+        "Los tests deben ejecutarse contra la base de pruebas chess_test. "
+        "Usa: docker compose run --rm backend-test"
+    )
 
 
-@event.listens_for(engine, "connect")
-def _set_sqlite_pragma(dbapi_connection, connection_record):
-    cursor = dbapi_connection.cursor()
-    cursor.execute("PRAGMA foreign_keys=ON")
-    cursor.close()
-
-
-def override_get_session():
-    with Session(engine) as session:
-        yield session
-
-
-app.dependency_overrides[get_session] = override_get_session
-
-
-@pytest.fixture
-def client():
-    SQLModel.metadata.create_all(engine)
-    with TestClient(app) as test_client:
-        yield test_client
+@pytest.fixture(scope="session", autouse=True)
+def _schema():
     SQLModel.metadata.drop_all(engine)
+    SQLModel.metadata.create_all(engine)
+    yield
+    SQLModel.metadata.drop_all(engine)
+
+
+@pytest.fixture(autouse=True)
+def _clean_db():
+    yield
+    table_names = ", ".join(table.name for table in SQLModel.metadata.sorted_tables)
+    with Session(engine) as session:
+        session.execute(
+            text(f"TRUNCATE TABLE {table_names} RESTART IDENTITY CASCADE")
+        )
+        session.commit()
+
+
+@pytest.fixture(scope="session")
+def client():
+    test_client = TestClient(app)
+    yield test_client
+    test_client.close()
 
 
 @pytest.fixture
 def session():
-    SQLModel.metadata.create_all(engine)
     with Session(engine) as db_session:
         yield db_session
-    SQLModel.metadata.drop_all(engine)

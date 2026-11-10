@@ -3,14 +3,20 @@ import type {
   TrainingAnswer,
   TrainingAnswerPayload,
   TrainingSession,
+  TrainingSessionOptions,
 } from "../types/training";
 
 export function createTrainingSession(
   openingId: number,
+  options: TrainingSessionOptions = {},
 ): Promise<TrainingSession> {
   return apiFetch<TrainingSession>("/training/sessions", {
     method: "POST",
-    body: JSON.stringify({ opening_id: openingId }),
+    body: JSON.stringify({
+      opening_id: openingId,
+      mode: options.mode ?? "full",
+      from_node_id: options.fromNodeId ?? null,
+    }),
   });
 }
 

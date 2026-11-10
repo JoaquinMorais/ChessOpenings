@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { Chess, type Move } from "chess.js";
 
 import { ApiError } from "../api/client";
@@ -11,8 +11,11 @@ import {
 } from "../api/training";
 import ChessBoardView from "../components/ChessBoardView";
 import type { BoardLastMove, BoardMove } from "../components/ChessBoardView";
+import ClassificationBadge from "../components/ClassificationBadge";
 import type { OpeningSummary } from "../types/opening";
 import type {
+  TrainingMode,
+  TrainingMoveInfo,
   TrainingQuestionStep,
   TrainingSession,
   TrainingStep,
@@ -80,9 +83,51 @@ function lastMoveFromLeadIn(step: TrainingQuestionStep): BoardLastMove | null {
   return move ? uciToLastMove(move.uci) : null;
 }
 
+const SHOW_OBSERVATIONS_KEY = "chess-openings-show-observations";
+
+interface MoveInfoCardProps {
+  title: string;
+  info: TrainingMoveInfo;
+  showObservations: boolean;
+}
+
+function MoveInfoCard({ title, info, showObservations }: MoveInfoCardProps) {
+  const hasContent =
+    info.name !== null ||
+    info.classification !== null ||
+    (showObservations && info.comment !== null);
+  if (!hasContent) {
+    return null;
+  }
+
+  return (
+    <section className="panel move-info-card">
+      <p className="card-label">{title}</p>
+      <div className="move-info-header">
+        <ClassificationBadge
+          classification={info.classification}
+          size="md"
+        />
+        <strong>{info.name ?? info.san ?? "Jugada"}</strong>
+      </div>
+      {showObservations && info.comment && (
+        <p className="move-info-comment">{info.comment}</p>
+      )}
+    </section>
+  );
+}
+
 function TrainingPage() {
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
   const openingId = Number(id);
+  const modeParam = searchParams.get("mode");
+  const trainingMode: TrainingMode = modeParam === "weak" ? "weak" : "full";
+  const fromNodeParam = Number(searchParams.get("from_node_id"));
+  const fromNodeId =
+    Number.isInteger(fromNodeParam) && fromNodeParam > 0
+      ? fromNodeParam
+      : null;
   const [opening, setOpening] = useState<OpeningSummary | null>(null);
   const [sessionId, setSessionId] = useState<number | null>(null);
   const [step, setStep] = useState<TrainingStep | null>(null);
@@ -94,9 +139,26 @@ function TrainingPage() {
   );
   const [feedback, setFeedback] = useState<IncorrectFeedback | null>(null);
   const [lastMove, setLastMove] = useState<BoardLastMove | null>(null);
+  const [rivalMoveInfo, setRivalMoveInfo] = useState<TrainingMoveInfo | null>(
+    null,
+  );
+  const [answeredMoveInfo, setAnsweredMoveInfo] =
+    useState<TrainingMoveInfo | null>(null);
+  const [hintSquare, setHintSquare] = useState<string | null>(null);
+  const [hintUsed, setHintUsed] = useState(false);
+  const [showObservations, setShowObservations] = useState(
+    () =>
+      typeof window === "undefined" ||
+      window.localStorage.getItem(SHOW_OBSERVATIONS_KEY) !== "false",
+  );
   const [boardWidth, setBoardWidth] = useState(getBoardWidth);
   const animationTokenRef = useRef(0);
   const startedForRef = useRef<string | null>(null);
+
+  const handleToggleObservations = (checked: boolean) => {
+    setShowObservations(checked);
+    window.localStorage.setItem(SHOW_OBSERVATIONS_KEY, String(checked));
+  };
 
   useEffect(() => {
     const handleResize = () => setBoardWidth(getBoardWidth());
@@ -111,6 +173,10 @@ function TrainingPage() {
       setError(null);
       setFeedback(null);
       setLastMove(null);
+      setRivalMoveInfo(null);
+      setAnsweredMoveInfo(null);
+      setHintSquare(null);
+      setHintUsed(false);
       setStep(nextStep);
 
       if (nextStep.kind === "finished") {
@@ -155,6 +221,10 @@ function TrainingPage() {
       }
 
       setBoardFen(nextStep.fen);
+      const lastLeadIn = nextStep.lead_in[nextStep.lead_in.length - 1];
+      if (lastLeadIn) {
+        setRivalMoveInfo(lastLeadIn);
+      }
       setPhase("question");
     },
     [openingId],
@@ -168,10 +238,17 @@ function TrainingPage() {
       setFeedback(null);
       setStep(null);
       setLastMove(null);
+      setRivalMoveInfo(null);
+      setAnsweredMoveInfo(null);
+      setHintSquare(null);
+      setHintUsed(false);
       setBoardFen(INITIAL_FEN);
 
       try {
-        const session = await createTrainingSession(nextOpeningId);
+        const session = await createTrainingSession(nextOpeningId, {
+          mode: trainingMode,
+          fromNodeId,
+        });
         if (!session.step) {
           throw new Error("La sesión no devolvió un paso.");
         }
@@ -186,11 +263,11 @@ function TrainingPage() {
         setPhase("error");
       }
     },
-    [runStep],
+    [runStep, trainingMode, fromNodeId],
   );
 
   useEffect(() => {
-    const loadKey = id ?? "";
+    const loadKey = `${id ?? ""}?${searchParams.toString()}`;
     if (startedForRef.current === loadKey) {
       return;
     }
@@ -251,18 +328,21 @@ function TrainingPage() {
       cancelled = true;
       animationTokenRef.current += 1;
     };
-  }, [id, openingId, startSession]);
+  }, [id, openingId, startSession, searchParams]);
 
   const submitAnswer = async (
     currentSessionId: number,
     question: TrainingQuestionStep,
     uci: string,
+    usedHint: boolean,
   ) => {
     try {
       const result = await answerTrainingSession(currentSessionId, {
         node_id: question.node_id,
         move: uci,
+        hint_used: usedHint,
       });
+      setAnsweredMoveInfo(question.correct_move);
 
       if (result.correct) {
         setPhase("correct");
@@ -331,9 +411,22 @@ function TrainingPage() {
     setLastMove(uciToLastMove(uci));
     setFeedback(null);
     setError(null);
+    setHintSquare(null);
     setPhase("answering");
-    void submitAnswer(sessionId, question, uci);
+    void submitAnswer(sessionId, question, uci, hintUsed);
     return true;
+  };
+
+  const handleHint = () => {
+    if (phase !== "question" || !step || step.kind !== "question") {
+      return;
+    }
+    const uci = step.correct_move.uci;
+    if (!uci) {
+      return;
+    }
+    setHintUsed(true);
+    setHintSquare(uci.slice(0, 2));
   };
 
   const handleResume = () => {
@@ -501,6 +594,7 @@ function TrainingPage() {
             disabled={phase !== "question"}
             lastMove={lastMove}
             boardWidth={boardWidth}
+            hintSquare={hintSquare}
             onMove={handleMove}
           />
         </div>
@@ -513,6 +607,16 @@ function TrainingPage() {
             <Link className="button button--ghost" to="/openings">
               Volver
             </Link>
+            <label className="checkbox-field">
+              <input
+                type="checkbox"
+                checked={showObservations}
+                onChange={(event) =>
+                  handleToggleObservations(event.target.checked)
+                }
+              />
+              Mostrar observaciones
+            </label>
           </section>
 
           {progress && (
@@ -556,6 +660,38 @@ function TrainingPage() {
               </button>
             </div>
           )}
+
+          <section className="panel">
+            <p className="card-label">Ayuda</p>
+            <button
+              type="button"
+              className="button button--small"
+              onClick={handleHint}
+              disabled={phase !== "question" || hintUsed}
+            >
+              {hintUsed ? "Pista usada" : "Pista"}
+            </button>
+            <p className="editor-hint">
+              La pista cuenta como error.
+            </p>
+          </section>
+
+          {rivalMoveInfo && (
+            <MoveInfoCard
+              title="Jugada del rival"
+              info={rivalMoveInfo}
+              showObservations={showObservations}
+            />
+          )}
+
+          {answeredMoveInfo &&
+            (phase === "correct" || phase === "incorrect") && (
+              <MoveInfoCard
+                title="Jugada correcta"
+                info={answeredMoveInfo}
+                showObservations={showObservations}
+              />
+            )}
 
           <section className="panel">
             <p className="card-label">Estado</p>

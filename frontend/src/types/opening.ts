@@ -8,6 +8,7 @@ export interface OpeningSummary {
   color: OpeningColor;
   node_count: number;
   accuracy: number | null;
+  in_seed: boolean;
 }
 
 export interface OpeningCreatePayload {
@@ -17,4 +18,13 @@ export interface OpeningCreatePayload {
 
 export interface OpeningRenamePayload {
   name: string;
+}
+export interface SeedFileResponse {
+  path: string;
+}
+
+export interface OpeningPgnImportPayload {
+  pgn: string;
+  name?: string;
+  color: OpeningColor;
 }

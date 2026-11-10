@@ -11,6 +11,9 @@ def make_node(
     ply: int,
     children=None,
     order_index: int = 0,
+    name=None,
+    comment=None,
+    classification=None,
 ) -> TrainingNode:
     return TrainingNode(
         id=node_id,
@@ -19,6 +22,9 @@ def make_node(
         fen=f"fen-{node_id}",
         ply=ply,
         order_index=order_index,
+        name=name,
+        comment=comment,
+        classification=classification,
         children=children or [],
     )
 
@@ -82,18 +88,18 @@ def test_linear_tree_and_finish():
     assert result["correct_move_san"] == "e4"
     assert step["node_id"] == 2
     assert step["lead_in"] == [
-        {"uci": "e2e4", "san": "e4", "fast_forward": True},
-        {"uci": "e7e5", "san": "e5", "fast_forward": False},
+        {"uci": "e2e4", "san": "e4", "name": None, "comment": None, "classification": None, "fast_forward": True},
+        {"uci": "e7e5", "san": "e5", "name": None, "comment": None, "classification": None, "fast_forward": False},
     ]
 
     result, state, step = answer(state, 2, "g1f3")
     assert result["correct"] is True
     assert step["node_id"] == 4
     assert step["lead_in"] == [
-        {"uci": "e2e4", "san": "e4", "fast_forward": True},
-        {"uci": "e7e5", "san": "e5", "fast_forward": True},
-        {"uci": "g1f3", "san": "Nf3", "fast_forward": True},
-        {"uci": "b8c6", "san": "Nc6", "fast_forward": False},
+        {"uci": "e2e4", "san": "e4", "name": None, "comment": None, "classification": None, "fast_forward": True},
+        {"uci": "e7e5", "san": "e5", "name": None, "comment": None, "classification": None, "fast_forward": True},
+        {"uci": "g1f3", "san": "Nf3", "name": None, "comment": None, "classification": None, "fast_forward": True},
+        {"uci": "b8c6", "san": "Nc6", "name": None, "comment": None, "classification": None, "fast_forward": False},
     ]
 
     result, state, step = answer(state, 4, "f1c4")
@@ -130,23 +136,23 @@ def test_nested_branches_do_not_jump_between_far_branches():
     _, state, step = answer(state, 1, "e7e5")
     assert step["node_id"] == 3
     assert step["lead_in"] == [
-        {"uci": "e2e4", "san": "e4", "fast_forward": True},
-        {"uci": "e7e5", "san": "e5", "fast_forward": True},
-        {"uci": "g1f3", "san": "Nf3", "fast_forward": False},
+        {"uci": "e2e4", "san": "e4", "name": None, "comment": None, "classification": None, "fast_forward": True},
+        {"uci": "e7e5", "san": "e5", "name": None, "comment": None, "classification": None, "fast_forward": True},
+        {"uci": "g1f3", "san": "Nf3", "name": None, "comment": None, "classification": None, "fast_forward": False},
     ]
 
     _, state, step = answer(state, 3, "d7d6")
     assert step["node_id"] == 4
     assert step["lead_in"] == [
-        {"uci": "e2e4", "san": "e4", "fast_forward": True},
-        {"uci": "e7e5", "san": "e5", "fast_forward": True},
-        {"uci": "f1c4", "san": "Bc4", "fast_forward": False},
+        {"uci": "e2e4", "san": "e4", "name": None, "comment": None, "classification": None, "fast_forward": True},
+        {"uci": "e7e5", "san": "e5", "name": None, "comment": None, "classification": None, "fast_forward": True},
+        {"uci": "f1c4", "san": "Bc4", "name": None, "comment": None, "classification": None, "fast_forward": False},
     ]
 
     _, state, step = answer(state, 4, "g8f6")
     assert step["node_id"] == 5
     assert step["lead_in"] == [
-        {"uci": "d2d4", "san": "d4", "fast_forward": False},
+        {"uci": "d2d4", "san": "d4", "name": None, "comment": None, "classification": None, "fast_forward": False},
     ]
 
 
@@ -166,8 +172,8 @@ def test_wrong_answer_goes_to_review_with_rounds():
     assert step["phase"] == "review"
     assert step["node_id"] == 2
     assert step["lead_in"] == [
-        {"uci": "e2e4", "san": "e4", "fast_forward": True},
-        {"uci": "e7e5", "san": "e5", "fast_forward": True},
+        {"uci": "e2e4", "san": "e4", "name": None, "comment": None, "classification": None, "fast_forward": True},
+        {"uci": "e7e5", "san": "e5", "name": None, "comment": None, "classification": None, "fast_forward": True},
     ]
     assert state["pending"] == [2]
 
@@ -193,6 +199,145 @@ def test_black_opening_first_step_includes_rival_move():
     assert step["kind"] == "question"
     assert step["node_id"] == 1
     assert step["lead_in"] == [
-        {"uci": "e2e4", "san": "e4", "fast_forward": False},
+        {"uci": "e2e4", "san": "e4", "name": None, "comment": None, "classification": None, "fast_forward": False},
     ]
     assert json.dumps(state)
+
+def test_step_includes_move_metadata():
+    root = make_node(0, None, None, 0)
+    rival = make_node(
+        1,
+        "e4",
+        "e2e4",
+        1,
+        name="Apertura rival",
+        comment="Comentario del rival",
+        classification="book",
+    )
+    correct = make_node(
+        2,
+        "e5",
+        "e7e5",
+        2,
+        name="Respuesta correcta",
+        comment="Comentario correcto",
+        classification="best",
+    )
+    rival.children = [correct]
+    root.children = [rival]
+
+    _, step = start(root, "black", random.Random(1))
+
+    assert step["node_id"] == 1
+    assert step["lead_in"] == [
+        {
+            "uci": "e2e4",
+            "san": "e4",
+            "name": "Apertura rival",
+            "comment": "Comentario del rival",
+            "classification": "book",
+            "fast_forward": False,
+        }
+    ]
+    assert step["correct_move"] == {
+        "id": 2,
+        "uci": "e7e5",
+        "san": "e5",
+        "name": "Respuesta correcta",
+        "comment": "Comentario correcto",
+        "classification": "best",
+    }
+
+
+def test_question_filter_skips_disallowed_questions():
+    state, step = start(
+        linear_tree(),
+        "white",
+        random.Random(1),
+        question_filter={2},
+    )
+
+    assert state["questions_total"] == 1
+    assert step["node_id"] == 2
+    assert step["lead_in"] == [
+        {
+            "uci": "e2e4",
+            "san": "e4",
+            "name": None,
+            "comment": None,
+            "classification": None,
+            "fast_forward": True,
+        },
+        {
+            "uci": "e7e5",
+            "san": "e5",
+            "name": None,
+            "comment": None,
+            "classification": None,
+            "fast_forward": False,
+        },
+    ]
+
+    _, state, step = answer(state, 2, "g1f3")
+    assert step["kind"] == "finished"
+
+
+def test_from_node_id_scopes_subtree():
+    state, step = start(
+        linear_tree(),
+        "white",
+        random.Random(1),
+        from_node_id=2,
+    )
+
+    assert state["questions_total"] == 2
+    assert step["node_id"] == 2
+    assert step["lead_in"] == [
+        {
+            "uci": "e2e4",
+            "san": "e4",
+            "name": None,
+            "comment": None,
+            "classification": None,
+            "fast_forward": True,
+        },
+        {
+            "uci": "e7e5",
+            "san": "e5",
+            "name": None,
+            "comment": None,
+            "classification": None,
+            "fast_forward": True,
+        },
+    ]
+
+    _, state, step = answer(state, 2, "g1f3")
+    assert step["node_id"] == 4
+
+    _, state, step = answer(state, 4, "f1c4")
+    assert step["kind"] == "finished"
+
+
+def test_empty_question_filter_finishes():
+    _, step = start(
+        linear_tree(),
+        "white",
+        random.Random(1),
+        question_filter=set(),
+    )
+
+    assert step["kind"] == "finished"
+    assert step["summary"]["questions_total"] == 0
+    assert step["summary"]["accuracy"] == 0.0
+
+
+def test_hint_used_counts_as_error():
+    state, step = start(linear_tree(), "white", random.Random(1))
+
+    result, state, step = answer(state, 0, "e2e4", hint_used=True)
+
+    assert result["correct"] is False
+    assert result["move_correct"] is True
+    assert state["pending"] == [0]
+    assert state["first_try_correct"] == 0
+    assert step["node_id"] == 2

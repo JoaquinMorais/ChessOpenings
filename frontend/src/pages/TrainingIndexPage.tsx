@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { ApiError } from "../api/client";
 import { listOpenings } from "../api/openings";
 import type { OpeningColor, OpeningSummary } from "../types/opening";
+import type { TrainingMode } from "../types/training";
 
 type ListState =
   | { status: "loading" }
@@ -28,6 +29,7 @@ function formatMoves(nodeCount: number): number {
 
 function TrainingIndexPage() {
   const [list, setList] = useState<ListState>({ status: "loading" });
+  const [mode, setMode] = useState<TrainingMode>("full");
 
   const loadOpenings = useCallback(async () => {
     setList({ status: "loading" });
@@ -50,6 +52,25 @@ function TrainingIndexPage() {
         <h2>Elegir apertura</h2>
         <p>Seleccioná un repertorio para empezar a entrenar.</p>
       </div>
+
+      <section className="panel mode-selector">
+        <label htmlFor="training-mode">Modo de entrenamiento</label>
+        <select
+          id="training-mode"
+          value={mode}
+          onChange={(event) =>
+            setMode(event.target.value === "weak" ? "weak" : "full")
+          }
+        >
+          <option value="full">Completo</option>
+          <option value="weak">Solo preguntas débiles</option>
+        </select>
+        <p className="editor-info">
+          {mode === "full"
+            ? "Se recorren todas las preguntas del repertorio."
+            : "Se preguntan solo posiciones con acierto bajo, viejas o nunca practicadas."}
+        </p>
+      </section>
 
       {list.status === "loading" && (
         <p className="state-message">Cargando aperturas...</p>
@@ -99,7 +120,7 @@ function TrainingIndexPage() {
               <div className="opening-actions">
                 <Link
                   className="button button--small"
-                  to={`/openings/${opening.id}/train`}
+                  to={`/openings/${opening.id}/train?mode=${mode}`}
                 >
                   Entrenar
                 </Link>

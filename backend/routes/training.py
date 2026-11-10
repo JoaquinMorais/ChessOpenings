@@ -39,7 +39,12 @@ def create_session(
     payload: TrainingSessionCreate, session: Session = Depends(get_session)
 ):
     try:
-        training_session, _ = create_training_session(session, payload.opening_id)
+        training_session, _ = create_training_session(
+            session,
+            payload.opening_id,
+            mode=payload.mode,
+            from_node_id=payload.from_node_id,
+        )
     except TrainingNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
     except TrainingConflictError as exc:
@@ -64,7 +69,11 @@ def answer_session(
 ):
     try:
         result, step = submit_training_answer(
-            session, session_id, payload.node_id, payload.move
+            session,
+            session_id,
+            payload.node_id,
+            payload.move,
+            hint_used=payload.hint_used,
         )
     except TrainingNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc))

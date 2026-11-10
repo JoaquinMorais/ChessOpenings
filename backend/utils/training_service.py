@@ -1,5 +1,5 @@
 import random
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Tuple
 
 from sqlmodel import Session, select
@@ -31,6 +31,9 @@ def _to_training_node(data: Dict[str, Any]) -> TrainingNode:
         fen=data["fen"],
         ply=data["ply"],
         order_index=data["order_index"],
+        name=data.get("name"),
+        comment=data.get("comment"),
+        classification=data.get("classification"),
         children=[_to_training_node(child) for child in data["children"]],
     )
 
@@ -40,18 +43,106 @@ def _build_training_tree(session: Session, opening_id: int) -> TrainingNode:
     return _to_training_node(build_tree(nodes))
 
 
+def _question_ids(tree: TrainingNode, color: str) -> set[int]:
+    ids: set[int] = set()
+
+    def walk(node: TrainingNode) -> None:
+        user_turn = node.ply % 2 == (0 if color == "white" else 1)
+        if user_turn and node.children:
+            ids.add(node.id)
+        for child in node.children:
+            walk(child)
+
+    walk(tree)
+    return ids
+
+
+def _weak_question_ids(
+    session: Session,
+    opening_id: int,
+    tree: TrainingNode,
+    color: str,
+) -> set[int]:
+    question_ids = _question_ids(tree, color)
+    stats = session.exec(
+        select(PositionStat)
+        .join(Node)
+        .where(Node.opening_id == opening_id)
+    ).all()
+    by_node = {stat.node_id: stat for stat in stats}
+    cutoff = datetime.now(timezone.utc) - timedelta(days=7)
+    weak: set[int] = set()
+
+    for node_id in question_ids:
+        stat = by_node.get(node_id)
+        if stat is None or stat.attempts == 0:
+            weak.add(node_id)
+            continue
+
+        accuracy = stat.correct / stat.attempts * 100
+        if accuracy < 70:
+            weak.add(node_id)
+            continue
+
+        last_practiced_at = stat.last_practiced_at
+        if last_practiced_at is None:
+            weak.add(node_id)
+            continue
+        if last_practiced_at.tzinfo is None:
+            last_practiced_at = last_practiced_at.replace(tzinfo=timezone.utc)
+        if last_practiced_at < cutoff:
+            weak.add(node_id)
+
+    return weak
+
+
 def create_training_session(
-    session: Session, opening_id: int
+    session: Session,
+    opening_id: int,
+    mode: str = "full",
+    from_node_id: int | None = None,
 ) -> Tuple[TrainingSession, Dict[str, Any]]:
     opening = session.get(Opening, opening_id)
     if not opening:
         raise TrainingNotFoundError("La apertura no existe.")
+    if mode not in ("full", "weak"):
+        raise TrainingConflictError("El modo de entrenamiento no es valido.")
+
+    if from_node_id is not None:
+        from_node = session.get(Node, from_node_id)
+        if not from_node or from_node.opening_id != opening_id:
+            raise TrainingNotFoundError(
+                "La posicion no existe en la apertura."
+            )
 
     tree = _build_training_tree(session, opening_id)
-    state, step = training_start(tree, opening.color, random.Random())
+    question_filter = (
+        _weak_question_ids(session, opening_id, tree, opening.color)
+        if mode == "weak"
+        else None
+    )
+
+    try:
+        state, step = training_start(
+            tree,
+            opening.color,
+            random.Random(),
+            question_filter=question_filter,
+            from_node_id=from_node_id,
+        )
+    except ValueError as exc:
+        raise TrainingNotFoundError(str(exc))
 
     if state["questions_total"] == 0:
-        raise TrainingConflictError("No hay nada para entrenar.")
+        if mode == "weak" and from_node_id is not None:
+            detail = "No hay preguntas débiles en esta rama."
+        elif mode == "weak":
+            detail = "No hay preguntas débiles para entrenar."
+        elif from_node_id is not None:
+            detail = "No hay preguntas en esta rama."
+        else:
+            detail = "No hay nada para entrenar."
+        raise TrainingConflictError(detail)
 
     state["last_step"] = step
     training_session = TrainingSession(
@@ -74,7 +165,11 @@ def get_training_session(session: Session, session_id: int) -> TrainingSession:
 
 
 def submit_training_answer(
-    session: Session, session_id: int, node_id: int, move_uci: str
+    session: Session,
+    session_id: int,
+    node_id: int,
+    move_uci: str,
+    hint_used: bool = False,
 ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     training_session = session.get(TrainingSession, session_id)
     if not training_session:
@@ -84,7 +179,10 @@ def submit_training_answer(
 
     try:
         result, new_state, step = training_answer(
-            training_session.state, node_id, move_uci
+            training_session.state,
+            node_id,
+            move_uci,
+            hint_used=hint_used,
         )
     except ValueError as exc:
         raise TrainingAnswerError(str(exc))

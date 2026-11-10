@@ -1,6 +1,8 @@
 import { useMemo } from "react";
 
+import { getClassification } from "../types/classifications";
 import type { TreeNode } from "../types/node";
+import ClassificationBadge from "./ClassificationBadge";
 
 interface VariationTreeProps {
   root: TreeNode;
@@ -46,6 +48,7 @@ function Branch({
     (left, right) => left.order_index - right.order_index,
   );
   const isCurrent = node.id === currentNodeId;
+  const classification = getClassification(node.classification);
 
   return (
     <div className={isRoot ? "variation-root" : "variation-node"}>
@@ -62,7 +65,32 @@ function Branch({
         onClick={() => onSelect(node.id)}
         aria-current={isCurrent ? "true" : undefined}
       >
-        {formatMoveLabel(node)}
+        <span
+          className="variation-move"
+          style={
+            classification && !isCurrent
+              ? { color: classification.color }
+              : undefined
+          }
+        >
+          {formatMoveLabel(node)}
+        </span>
+        <ClassificationBadge
+          classification={node.classification}
+          size="sm"
+        />
+        {node.name && (
+          <span className="variation-name"> · {node.name}</span>
+        )}
+        {node.comment && (
+          <span
+            className="variation-comment-icon"
+            title={node.comment}
+            aria-label="Tiene observaciones"
+          >
+            ✎
+          </span>
+        )}
       </button>
 
       {children.length > 0 && (

@@ -1,19 +1,29 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ChangeEvent } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 import { ApiError } from "../api/client";
 import {
   createOpening,
   deleteOpening,
+  deleteOpeningSeed,
   getOpeningExport,
+  getOpeningPgnExport,
   importOpening,
+  importOpeningPgn,
   listOpenings,
   renameOpening,
+  saveOpeningSeed,
 } from "../api/openings";
+import DeleteSeedDialog from "../components/DeleteSeedDialog";
 import ImportConflictDialog from "../components/ImportConflictDialog";
+import ImportPgnDialog from "../components/ImportPgnDialog";
 import OpeningForm from "../components/OpeningForm";
-import type { OpeningColor, OpeningSummary } from "../types/opening";
+import type {
+  OpeningColor,
+  OpeningPgnImportPayload,
+  OpeningSummary,
+} from "../types/opening";
 
 type ListState =
   | { status: "loading" }
@@ -51,6 +61,7 @@ function sanitizeFileName(name: string): string {
 }
 
 function OpeningsPage() {
+  const navigate = useNavigate();
   const [list, setList] = useState<ListState>({ status: "loading" });
   const [form, setForm] = useState<FormState>(null);
   const [formSubmitting, setFormSubmitting] = useState(false);
@@ -58,6 +69,15 @@ function OpeningsPage() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [exportingId, setExportingId] = useState<number | null>(null);
+  const [exportingPgnId, setExportingPgnId] = useState<number | null>(null);
+  const [pgnDialogOpen, setPgnDialogOpen] = useState(false);
+  const [pgnImporting, setPgnImporting] = useState(false);
+  const [pgnError, setPgnError] = useState<string | null>(null);
+  const [seedingId, setSeedingId] = useState<number | null>(null);
+  const [removingSeedId, setRemovingSeedId] = useState<number | null>(null);
+  const [pendingSeedDelete, setPendingSeedDelete] =
+    useState<OpeningSummary | null>(null);
+  const [deleteSeedError, setDeleteSeedError] = useState<string | null>(null);
   const [ioError, setIoError] = useState<string | null>(null);
   const [ioSuccess, setIoSuccess] = useState<string | null>(null);
   const [pendingImport, setPendingImport] = useState<{
@@ -111,10 +131,16 @@ function OpeningsPage() {
     setFormError(null);
     try {
       if (form.mode === "create") {
-        await createOpening({ name: values.name, color: values.color });
-      } else {
-        await renameOpening(form.opening.id, { name: values.name });
+        const created = await createOpening({
+          name: values.name,
+          color: values.color,
+        });
+        setForm(null);
+        navigate(`/openings/${created.id}/edit`);
+        return;
       }
+
+      await renameOpening(form.opening.id, { name: values.name });
       setForm(null);
       await loadOpenings();
     } catch (error) {
@@ -124,7 +150,44 @@ function OpeningsPage() {
     }
   };
 
+  const performDelete = async (
+    opening: OpeningSummary,
+    deleteSeed: boolean,
+    showDialogError: boolean,
+  ): Promise<boolean> => {
+    setDeletingId(opening.id);
+    if (showDialogError) {
+      setDeleteSeedError(null);
+    } else {
+      setActionError(null);
+    }
+
+    try {
+      if (deleteSeed) {
+        await deleteOpeningSeed(opening.id);
+      }
+      await deleteOpening(opening.id);
+      return true;
+    } catch (error) {
+      const message = getErrorMessage(error);
+      if (showDialogError) {
+        setDeleteSeedError(message);
+      } else {
+        setActionError(message);
+      }
+      return false;
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   const handleDelete = async (opening: OpeningSummary) => {
+    if (opening.in_seed) {
+      setPendingSeedDelete(opening);
+      setDeleteSeedError(null);
+      return;
+    }
+
     const confirmed = window.confirm(
       `¿Eliminar la apertura "${opening.name}"? Esta acción no se puede deshacer.`,
     );
@@ -132,15 +195,65 @@ function OpeningsPage() {
       return;
     }
 
-    setDeletingId(opening.id);
-    setActionError(null);
+    if (await performDelete(opening, false, false)) {
+      await loadOpenings();
+    }
+  };
+
+  const handleSeedDelete = async (deleteSeed: boolean) => {
+    if (!pendingSeedDelete) {
+      return;
+    }
+
+    if (await performDelete(pendingSeedDelete, deleteSeed, true)) {
+      setPendingSeedDelete(null);
+      setDeleteSeedError(null);
+      await loadOpenings();
+    }
+  };
+
+  const handleCancelSeedDelete = () => {
+    if (deletingId !== null) {
+      return;
+    }
+    setPendingSeedDelete(null);
+    setDeleteSeedError(null);
+  };
+
+  const handleSaveSeed = async (opening: OpeningSummary) => {
+    setSeedingId(opening.id);
+    setIoError(null);
+    setIoSuccess(null);
     try {
-      await deleteOpening(opening.id);
+      const result = await saveOpeningSeed(opening.id);
+      setIoSuccess(`Guardado en ${result.path}.`);
       await loadOpenings();
     } catch (error) {
-      setActionError(getErrorMessage(error));
+      setIoError(getErrorMessage(error));
     } finally {
-      setDeletingId(null);
+      setSeedingId(null);
+    }
+  };
+
+  const handleRemoveSeed = async (opening: OpeningSummary) => {
+    const confirmed = window.confirm(
+      `¿Quitar "${opening.name}" del seed? El archivo guardado se eliminará.`,
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    setRemovingSeedId(opening.id);
+    setIoError(null);
+    setIoSuccess(null);
+    try {
+      await deleteOpeningSeed(opening.id);
+      setIoSuccess(`"${opening.name}" quitado del seed.`);
+      await loadOpenings();
+    } catch (error) {
+      setIoError(getErrorMessage(error));
+    } finally {
+      setRemovingSeedId(null);
     }
   };
 
@@ -166,6 +279,48 @@ function OpeningsPage() {
       setIoError(getErrorMessage(error));
     } finally {
       setExportingId(null);
+    }
+  };
+
+  const handleExportPgn = async (opening: OpeningSummary) => {
+    setExportingPgnId(opening.id);
+    setIoError(null);
+    setIoSuccess(null);
+    try {
+      const content = await getOpeningPgnExport(opening.id);
+      const blob = new Blob([content], {
+        type: "application/x-chess-pgn",
+      });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `${sanitizeFileName(opening.name)}.pgn`;
+      document.body.append(anchor);
+      anchor.click();
+      anchor.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 0);
+      setIoSuccess(`PGN exportado: "${opening.name}".`);
+    } catch (error) {
+      setIoError(getErrorMessage(error));
+    } finally {
+      setExportingPgnId(null);
+    }
+  };
+
+  const handlePgnImport = async (payload: OpeningPgnImportPayload) => {
+    setPgnImporting(true);
+    setPgnError(null);
+    setIoError(null);
+    setIoSuccess(null);
+    try {
+      const imported = await importOpeningPgn(payload);
+      setPgnDialogOpen(false);
+      setIoSuccess(`Opening PGN importado como "${imported.name}".`);
+      await loadOpenings();
+    } catch (error) {
+      setPgnError(getErrorMessage(error));
+    } finally {
+      setPgnImporting(false);
     }
   };
 
@@ -249,6 +404,16 @@ function OpeningsPage() {
             disabled={importBusy || pendingImport !== null}
           >
             {importBusy ? "Importando..." : "Importar"}
+          </button>
+          <button
+            type="button"
+            className="button button--ghost"
+            onClick={() => {
+              setPgnDialogOpen(true);
+              setPgnError(null);
+            }}
+          >
+            Importar PGN
           </button>
           <button type="button" className="button" onClick={openCreateForm}>
             Nuevo opening
@@ -357,7 +522,12 @@ function OpeningsPage() {
                   aria-label={COLOR_LABELS[opening.color]}
                 />
                 <div>
-                  <h3>{opening.name}</h3>
+                  <h3>
+                    {opening.name}
+                    {opening.in_seed && (
+                      <span className="seed-badge">En seed</span>
+                    )}
+                  </h3>
                   <p className="opening-meta">
                     <span>{COLOR_LABELS[opening.color]}</span>
                     <span>{formatMoves(opening.node_count)} jugadas</span>
@@ -396,6 +566,46 @@ function OpeningsPage() {
                 <button
                   type="button"
                   className="button button--small button--ghost"
+                  onClick={() => void handleExportPgn(opening)}
+                  disabled={exportingPgnId === opening.id}
+                >
+                  {exportingPgnId === opening.id
+                    ? "Exportando PGN..."
+                    : "Exportar PGN"}
+                </button>
+                <button
+                  type="button"
+                  className="button button--small button--ghost"
+                  onClick={() => void handleSaveSeed(opening)}
+                  disabled={
+                    seedingId === opening.id ||
+                    removingSeedId === opening.id
+                  }
+                >
+                  {seedingId === opening.id
+                    ? "Guardando..."
+                    : opening.in_seed
+                      ? "Actualizar seed"
+                      : "Guardar en seed"}
+                </button>
+                {opening.in_seed && (
+                  <button
+                    type="button"
+                    className="button button--small button--ghost"
+                    onClick={() => void handleRemoveSeed(opening)}
+                    disabled={
+                      seedingId === opening.id ||
+                      removingSeedId === opening.id
+                    }
+                  >
+                    {removingSeedId === opening.id
+                      ? "Quitando..."
+                      : "Quitar del seed"}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="button button--small button--ghost"
                   onClick={() => openRenameForm(opening)}
                 >
                   Renombrar
@@ -412,6 +622,32 @@ function OpeningsPage() {
             </li>
           ))}
         </ul>
+      )}
+
+      {pgnDialogOpen && (
+        <ImportPgnDialog
+          busy={pgnImporting}
+          error={pgnError}
+          onImport={(payload) => void handlePgnImport(payload)}
+          onCancel={() => {
+            if (pgnImporting) {
+              return;
+            }
+            setPgnDialogOpen(false);
+            setPgnError(null);
+          }}
+        />
+      )}
+
+      {pendingSeedDelete && (
+        <DeleteSeedDialog
+          openingName={pendingSeedDelete.name}
+          busy={deletingId === pendingSeedDelete.id}
+          error={deleteSeedError}
+          onDeleteOnly={() => void handleSeedDelete(false)}
+          onDeleteWithSeed={() => void handleSeedDelete(true)}
+          onCancel={handleCancelSeedDelete}
+        />
       )}
 
       {pendingImport && (

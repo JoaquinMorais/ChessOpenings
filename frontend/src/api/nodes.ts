@@ -1,5 +1,10 @@
 import { apiFetch } from "./client";
-import type { MovePayload, NodeRead, TreeNode } from "../types/node";
+import type {
+  MovePayload,
+  NodeRead,
+  NodeUpdatePayload,
+  TreeNode,
+} from "../types/node";
 
 export function getTree(openingId: number): Promise<TreeNode> {
   return apiFetch<TreeNode>(`/openings/${openingId}/tree`);
@@ -24,5 +29,14 @@ export function makeMain(nodeId: number): Promise<NodeRead> {
 export function deleteNode(nodeId: number): Promise<void> {
   return apiFetch<void>(`/nodes/${nodeId}`, {
     method: "DELETE",
+  });
+}
+export function updateNode(
+  nodeId: number,
+  payload: NodeUpdatePayload,
+): Promise<NodeRead> {
+  return apiFetch<NodeRead>(`/nodes/${nodeId}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
   });
 }

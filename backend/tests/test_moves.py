@@ -115,3 +115,81 @@ def test_black_opening_allows_multiple_root_moves(client: TestClient):
     assert second.status_code == 201
     assert first.json()["order_index"] == 0
     assert second.json()["order_index"] == 1
+
+
+def test_rival_second_branch_after_backtrack(client: TestClient):
+    opening_id = _create_opening(client, "Backtrack Branches", "white")
+
+    e4 = client.post(
+        f"{BASE}/{opening_id}/moves",
+        json={"parent_id": 1, "move": "e4"},
+    ).json()
+    e5 = client.post(
+        f"{BASE}/{opening_id}/moves",
+        json={"parent_id": e4["id"], "move": "e5"},
+    ).json()
+    client.post(
+        f"{BASE}/{opening_id}/moves",
+        json={"parent_id": e5["id"], "move": "Nf3"},
+    )
+
+    second_response = client.post(
+        f"{BASE}/{opening_id}/moves",
+        json={"parent_id": e4["id"], "move": "c5"},
+    )
+    assert second_response.status_code == 201
+    c5 = second_response.json()
+    assert c5["parent_id"] == e4["id"]
+    assert c5["order_index"] == 1
+
+    tree = client.get(f"{BASE}/{opening_id}/tree").json()
+    e4_node = tree["children"][0]
+    assert [child["uci"] for child in e4_node["children"]] == [
+        "e7e5",
+        "c7c5",
+    ]
+    assert [child["order_index"] for child in e4_node["children"]] == [0, 1]
+    assert e4_node["children"][0]["children"][0]["uci"] == "g1f3"
+
+def test_transposition_detection(client: TestClient):
+    opening_id = _create_opening(client, "Transposition", "black")
+
+    e4 = client.post(
+        f"{BASE}/{opening_id}/moves",
+        json={"parent_id": 1, "move": "e4"},
+    ).json()
+    e5 = client.post(
+        f"{BASE}/{opening_id}/moves",
+        json={"parent_id": e4["id"], "move": "e5"},
+    ).json()
+    nf3 = client.post(
+        f"{BASE}/{opening_id}/moves",
+        json={"parent_id": e5["id"], "move": "Nf3"},
+    ).json()
+    first_nc6 = client.post(
+        f"{BASE}/{opening_id}/moves",
+        json={"parent_id": nf3["id"], "move": "Nc6"},
+    ).json()
+    assert first_nc6["transposition_of"] is None
+
+    nf3_first = client.post(
+        f"{BASE}/{opening_id}/moves",
+        json={"parent_id": 1, "move": "Nf3"},
+    ).json()
+    e5_second = client.post(
+        f"{BASE}/{opening_id}/moves",
+        json={"parent_id": nf3_first["id"], "move": "e5"},
+    ).json()
+    e4_second = client.post(
+        f"{BASE}/{opening_id}/moves",
+        json={"parent_id": e5_second["id"], "move": "e4"},
+    ).json()
+    second_nc6 = client.post(
+        f"{BASE}/{opening_id}/moves",
+        json={"parent_id": e4_second["id"], "move": "Nc6"},
+    )
+    assert second_nc6.status_code == 201
+    assert second_nc6.json()["transposition_of"] == {
+        "node_id": first_nc6["id"],
+        "path_san": "1. e4 e5 2. Nf3 Nc6",
+    }

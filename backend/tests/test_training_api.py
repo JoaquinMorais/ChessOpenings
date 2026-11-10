@@ -163,3 +163,103 @@ def test_answer_for_unexpected_node(client: TestClient):
         json={"node_id": ids["e5"], "move": "e7e5"},
     )
     assert response.status_code == 422
+
+def test_training_step_includes_move_metadata(client: TestClient):
+    opening_id, ids = _create_linear_opening(client)
+
+    client.patch(
+        f"/api/nodes/{ids['e4']}",
+        json={
+            "name": "Salida e4",
+            "comment": "Comentario de e4",
+            "classification": "book",
+        },
+    )
+    client.patch(
+        f"/api/nodes/{ids['e5']}",
+        json={
+            "name": "Respuesta e5",
+            "comment": "Comentario de e5",
+            "classification": "mistake",
+        },
+    )
+
+    response = client.post(SESSIONS, json={"opening_id": opening_id})
+    assert response.status_code == 201
+    session = response.json()
+    assert session["step"]["correct_move"] == {
+        "id": ids["e4"],
+        "uci": "e2e4",
+        "san": "e4",
+        "name": "Salida e4",
+        "comment": "Comentario de e4",
+        "classification": "book",
+    }
+
+    response = client.post(
+        f"{SESSIONS}/{session['id']}/answer",
+        json={"node_id": ids["root"], "move": "e2e4"},
+    )
+    assert response.status_code == 200
+    next_step = response.json()["next_step"]
+    assert next_step["node_id"] == ids["e5"]
+    assert next_step["lead_in"][-1] == {
+        "uci": "e7e5",
+        "san": "e5",
+        "name": "Respuesta e5",
+        "comment": "Comentario de e5",
+        "classification": "mistake",
+        "fast_forward": False,
+    }
+
+
+def test_session_from_node_scopes_subtree(client: TestClient):
+    opening_id, ids = _create_linear_opening(client)
+
+    response = client.post(
+        SESSIONS,
+        json={"opening_id": opening_id, "from_node_id": ids["e5"]},
+    )
+    assert response.status_code == 201
+    session = response.json()
+    assert session["questions_total"] == 2
+    assert session["step"]["node_id"] == ids["e5"]
+    assert session["step"]["lead_in"][-1]["fast_forward"] is True
+
+    response = client.post(
+        f"{SESSIONS}/{session['id']}/answer",
+        json={"node_id": ids["e5"], "move": "g1f3"},
+    )
+    assert response.status_code == 200
+    assert response.json()["next_step"]["node_id"] == ids["nc6"]
+
+
+def test_hint_used_marks_answer_as_incorrect(client: TestClient):
+    opening_id, ids = _create_linear_opening(client)
+    session = client.post(SESSIONS, json={"opening_id": opening_id}).json()
+
+    response = client.post(
+        f"{SESSIONS}/{session['id']}/answer",
+        json={
+            "node_id": ids["root"],
+            "move": "e2e4",
+            "hint_used": True,
+        },
+    )
+    assert response.status_code == 200
+    answer = response.json()
+    assert answer["correct"] is False
+    assert answer["correct_move_san"] == "e4"
+    assert answer["next_step"]["node_id"] == ids["e5"]
+
+    recovered = client.get(f"{SESSIONS}/{session['id']}").json()
+    assert recovered["first_try_correct"] == 0
+
+    stats = client.get(f"{OPENINGS}/{opening_id}/stats").json()
+    root_stats = next(
+        position
+        for position in stats["positions"]
+        if position["node_id"] == ids["root"]
+    )
+    assert root_stats["attempts"] == 1
+    assert root_stats["correct"] == 0

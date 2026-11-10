@@ -1,6 +1,6 @@
 from typing import Optional
 
-from sqlalchemy import UniqueConstraint
+from sqlalchemy import String, Text, UniqueConstraint
 from sqlmodel import Field, SQLModel
 
 
@@ -15,4 +15,6 @@ class Node(SQLModel, table=True):
     fen: str
     ply: int = 0
     order_index: int = 0
-    comment: Optional[str] = None
+    name: Optional[str] = Field(default=None, sa_type=String(80))
+    comment: Optional[str] = Field(default=None, sa_type=Text)
+    classification: Optional[str] = None

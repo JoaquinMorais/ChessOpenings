@@ -10,33 +10,49 @@
           "children": [
             {
               "san": "e4",
-              "comment": null,
+              "comment": "El rival abre con e4.",
               "children": [
                 {
                   "san": "e5",
-                  "comment": null,
+                  "comment": "Las negras ocupan el centro.",
                   "children": [
                     {
                       "san": "Nf3",
                       "comment": null,
                       "children": [
-                        { "san": "d5", "comment": null, "children": [] }
-                      ]
+                        {
+                          "san": "d5",
+                          "comment": "Las negras entregan un peón central a cambio de actividad.",
+                          "children": [],
+                          "name": "Gambito Elefante"
+                        }
+                      ],
+                      "name": "Desarrollo armónico"
                     },
                     {
                       "san": "Bc4",
-                      "comment": null,
+                      "comment": "El rival evita la línea principal.",
                       "children": [
-                        { "san": "Nf6", "comment": null, "children": [] }
-                      ]
+                        {
+                          "san": "Nf6",
+                          "comment": null,
+                          "children": [],
+                          "name": "Desarrollo natural"
+                        }
+                      ],
+                      "name": "Variante del alfil",
+                      "classification": "mistake"
                     }
-                  ]
+                  ],
+                  "name": "Respuesta simétrica"
                 }
-              ]
+              ],
+              "name": "Apertura del peón rey",
+              "classification": "book"
             },
             {
               "san": "d4",
-              "comment": null,
+              "comment": "El rival evita e4.",
               "children": [
                 {
                   "san": "d5",
@@ -46,12 +62,20 @@
                       "san": "c4",
                       "comment": null,
                       "children": [
-                        { "san": "e6", "comment": null, "children": [] }
-                      ]
+                        {
+                          "san": "e6",
+                          "comment": null,
+                          "children": [],
+                          "name": "Defensa sólida"
+                        }
+                      ],
+                      "name": "Ataque a d5"
                     }
-                  ]
+                  ],
+                  "name": "Respuesta central"
                 }
-              ]
+              ],
+              "name": "Rama 1.d4"
             }
           ]
         }
@@ -81,7 +105,11 @@
                           "san": "Nc6",
                           "comment": null,
                           "children": [
-                            { "san": "Bc4", "comment": null, "children": [] }
+                            {
+                              "san": "Bc4",
+                              "comment": null,
+                              "children": []
+                            }
                           ]
                         }
                       ]
@@ -96,7 +124,11 @@
                       "san": "Nf3",
                       "comment": null,
                       "children": [
-                        { "san": "d6", "comment": null, "children": [] }
+                        {
+                          "san": "d6",
+                          "comment": null,
+                          "children": []
+                        }
                       ]
                     }
                   ]

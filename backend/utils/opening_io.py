@@ -3,6 +3,7 @@ from typing import Any, Dict, List, Optional
 
 from sqlmodel import Session, select
 
+from models.classification import Classification
 from models.node import Node
 from models.opening import Opening
 from utils.openings import INITIAL_FEN, count_nodes, opening_accuracy
@@ -15,6 +16,9 @@ class InvalidImportError(ValueError):
 
 class ImportNameConflictError(ValueError):
     pass
+
+
+VALID_CLASSIFICATIONS = {classification.value for classification in Classification}
 
 
 @dataclass
@@ -35,7 +39,9 @@ def export_opening(session: Session, opening_id: int) -> Dict[str, Any]:
     def export_node(node: Dict[str, Any]) -> Dict[str, Any]:
         return {
             "san": node["san"],
+            "name": node["name"],
             "comment": node["comment"],
+            "classification": node["classification"],
             "children": [export_node(child) for child in node["children"]],
         }
 
@@ -120,9 +126,44 @@ def _parse_children(
         if not isinstance(san_raw, str) or not san_raw.strip():
             raise InvalidImportError("La jugada (san) no es valida.")
 
-        comment = child_data.get("comment", None)
-        if comment is not None and not isinstance(comment, str):
+        name_raw = child_data.get("name", None)
+        if name_raw is not None and not isinstance(name_raw, str):
+            raise InvalidImportError("El nombre de la rama no es valido.")
+        name = name_raw.strip() if isinstance(name_raw, str) else None
+        if name == "":
+            name = None
+        if name is not None and len(name) > 80:
+            raise InvalidImportError(
+                "El nombre de la rama no puede superar los 80 caracteres."
+            )
+
+        comment_raw = child_data.get("comment", None)
+        if comment_raw is not None and not isinstance(comment_raw, str):
             raise InvalidImportError("El comentario no es valido.")
+        comment = comment_raw.strip() if isinstance(comment_raw, str) else None
+        if comment == "":
+            comment = None
+
+        classification_raw = child_data.get("classification", None)
+        if classification_raw is not None and not isinstance(
+            classification_raw, str
+        ):
+            raise InvalidImportError("La clasificacion no es valida.")
+        classification = (
+            classification_raw.strip()
+            if isinstance(classification_raw, str)
+            else None
+        )
+        if classification == "":
+            classification = None
+        if (
+            classification is not None
+            and classification not in VALID_CLASSIFICATIONS
+        ):
+            move_path = _format_move_path(path + [san_raw])
+            raise InvalidImportError(
+                f"Clasificacion desconocida en {move_path}: {classification}"
+            )
 
         child_children = child_data.get("children", [])
         if child_children is None:
@@ -142,7 +183,9 @@ def _parse_children(
                 "uci": result.uci,
                 "fen": result.fen,
                 "ply": result.ply,
+                "name": name,
                 "comment": comment,
+                "classification": classification,
                 "children": _parse_children(
                     result.fen, result.ply, child_children, color, path + [result.san]
                 ),
@@ -172,7 +215,9 @@ def _insert_children(
             fen=child["fen"],
             ply=child["ply"],
             order_index=index,
+            name=child["name"],
             comment=child["comment"],
+            classification=child["classification"],
         )
         session.add(node)
         session.flush()

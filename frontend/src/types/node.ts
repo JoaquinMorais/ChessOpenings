@@ -1,3 +1,5 @@
+import type { ClassificationKey } from "./classifications";
+
 export interface TreeNode {
   id: number;
   san: string | null;
@@ -5,8 +7,15 @@ export interface TreeNode {
   fen: string;
   ply: number;
   order_index: number;
+  name: string | null;
   comment: string | null;
+  classification: ClassificationKey | null;
   children: TreeNode[];
+}
+
+export interface TranspositionInfo {
+  node_id: number;
+  path_san: string;
 }
 
 export interface NodeRead {
@@ -18,7 +27,16 @@ export interface NodeRead {
   fen: string;
   ply: number;
   order_index: number;
+  name: string | null;
   comment: string | null;
+  classification: ClassificationKey | null;
+  transposition_of: TranspositionInfo | null;
+}
+
+export interface NodeUpdatePayload {
+  name?: string | null;
+  comment?: string | null;
+  classification?: ClassificationKey | null;
 }
 
 export interface MovePayload {

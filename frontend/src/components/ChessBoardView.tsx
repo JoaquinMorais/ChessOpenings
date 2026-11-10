@@ -26,6 +26,7 @@ interface ChessBoardViewProps {
   disabled: boolean;
   boardWidth?: number;
   lastMoveBadge?: BoardBadge | null;
+  hintSquare?: string | null;
 }
 
 const MOVE_DOT =
@@ -80,6 +81,7 @@ function ChessBoardView({
   disabled,
   boardWidth,
   lastMoveBadge,
+  hintSquare,
 }: ChessBoardViewProps) {
   const [selectedSquare, setSelectedSquare] = useState<Square | null>(null);
   const [promotion, setPromotion] = useState<PromotionState | null>(null);
@@ -167,6 +169,13 @@ function ChessBoardView({
       }
     }
 
+    if (hintSquare) {
+      styles[hintSquare] = {
+        ...(styles[hintSquare] ?? {}),
+        boxShadow: "inset 0 0 0 4px rgba(92, 139, 176, 0.9)",
+      };
+    }
+
     if (lastMoveBadge && lastMove) {
       const badge = badgeBackground(lastMoveBadge.symbol, lastMoveBadge.color);
       const existing = styles[lastMove.to] ?? {};
@@ -181,7 +190,7 @@ function ChessBoardView({
     }
 
     return styles;
-  }, [disabled, lastMove, lastMoveBadge, legalMoves]);
+  }, [disabled, hintSquare, lastMove, lastMoveBadge, legalMoves]);
 
   const isPromotionMove = (from: Square, to: Square): boolean => {
     const piece = game.get(from);

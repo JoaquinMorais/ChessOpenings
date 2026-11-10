@@ -1,9 +1,11 @@
-import { apiFetch } from "./client";
+import { apiFetch, apiFetchText } from "./client";
 import type {
   ImportConflict,
   OpeningCreatePayload,
+  OpeningPgnImportPayload,
   OpeningRenamePayload,
   OpeningSummary,
+  SeedFileResponse,
 } from "../types/opening";
 
 export function listOpenings(): Promise<OpeningSummary[]> {
@@ -52,4 +54,30 @@ export function importOpening(
     method: "POST",
     body: JSON.stringify(payload),
   });
+}
+export function saveOpeningSeed(
+  openingId: number,
+): Promise<SeedFileResponse> {
+  return apiFetch<SeedFileResponse>(`/openings/${openingId}/seed`, {
+    method: "POST",
+  });
+}
+
+export function deleteOpeningSeed(openingId: number): Promise<void> {
+  return apiFetch<void>(`/openings/${openingId}/seed`, {
+    method: "DELETE",
+  });
+}
+
+export function importOpeningPgn(
+  payload: OpeningPgnImportPayload,
+): Promise<OpeningSummary> {
+  return apiFetch<OpeningSummary>("/openings/import-pgn", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function getOpeningPgnExport(openingId: number): Promise<string> {
+  return apiFetchText(`/openings/${openingId}/export.pgn`);
 }

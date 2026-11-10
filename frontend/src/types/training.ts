@@ -1,6 +1,22 @@
-export interface TrainingLeadInMove {
-  uci: string;
+import type { ClassificationKey } from "./classifications";
+
+export type TrainingMode = "full" | "weak";
+
+export interface TrainingSessionOptions {
+  mode?: TrainingMode;
+  fromNodeId?: number | null;
+}
+
+export interface TrainingMoveInfo {
+  id?: number;
+  uci: string | null;
   san: string | null;
+  name: string | null;
+  comment: string | null;
+  classification: ClassificationKey | null;
+}
+
+export interface TrainingLeadInMove extends TrainingMoveInfo {
   fast_forward: boolean;
 }
 
@@ -15,6 +31,7 @@ export interface TrainingQuestionStep {
   node_id: number;
   fen: string;
   lead_in: TrainingLeadInMove[];
+  correct_move: TrainingMoveInfo;
   phase: "traversal" | "review";
   progress: TrainingProgress;
 }
@@ -43,6 +60,7 @@ export interface TrainingSession {
 export interface TrainingAnswerPayload {
   node_id: number;
   move: string;
+  hint_used?: boolean;
 }
 
 export interface TrainingAnswer {

@@ -41,6 +41,17 @@ function extractDetail(payload: unknown): string | null {
   return null;
 }
 
+async function buildApiError(response: Response): Promise<ApiError> {
+  let message = `Error ${response.status} al comunicarse con el servidor.`;
+  try {
+    const payload: unknown = await response.json();
+    message = extractDetail(payload) ?? message;
+  } catch {
+    // Conserva el mensaje por defecto si la respuesta no es JSON.
+  }
+  return new ApiError(message, response.status);
+}
+
 export async function apiFetch<T>(
   path: string,
   init: RequestInit = {},
@@ -53,14 +64,7 @@ export async function apiFetch<T>(
   const response = await fetch(`${API_BASE}${path}`, { ...init, headers });
 
   if (!response.ok) {
-    let message = `Error ${response.status} al comunicarse con el servidor.`;
-    try {
-      const payload: unknown = await response.json();
-      message = extractDetail(payload) ?? message;
-    } catch {
-      // Conserva el mensaje por defecto si la respuesta no es JSON.
-    }
-    throw new ApiError(message, response.status);
+    throw await buildApiError(response);
   }
 
   if (response.status === 204) {
@@ -68,4 +72,17 @@ export async function apiFetch<T>(
   }
 
   return (await response.json()) as T;
+}
+
+export async function apiFetchText(
+  path: string,
+  init: RequestInit = {},
+): Promise<string> {
+  const response = await fetch(`${API_BASE}${path}`, init);
+
+  if (!response.ok) {
+    throw await buildApiError(response);
+  }
+
+  return response.text();
 }

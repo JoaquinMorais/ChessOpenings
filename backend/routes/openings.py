@@ -5,6 +5,7 @@ from config.database import get_session
 from models.opening import Opening
 from schemas.opening_schema import OpeningCreate, OpeningRead, OpeningUpdate
 from utils.openings import count_nodes, create_root_node, opening_accuracy
+from utils.seed_files import seed_file_exists
 
 router = APIRouter(prefix="/openings", tags=["openings"])
 
@@ -16,6 +17,7 @@ def _to_read(session: Session, opening: Opening) -> OpeningRead:
         color=opening.color,
         node_count=count_nodes(session, opening.id),
         accuracy=opening_accuracy(session, opening.id),
+        in_seed=seed_file_exists(opening.name),
     )
 
 
@@ -55,6 +57,8 @@ def update_opening(opening_id: int, payload: OpeningUpdate, session: Session = D
         existing = session.exec(select(Opening).where(Opening.name == payload.name)).first()
         if existing:
             raise HTTPException(status_code=409, detail="Ya existe una apertura con ese nombre.")
+    # Renaming does not move or delete the old seed_import file. The old file
+    # remains on disk and may reappear under its old name after a restart.
     opening.name = payload.name
     session.add(opening)
     session.commit()

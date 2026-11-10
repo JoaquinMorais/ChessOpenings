@@ -1,16 +1,19 @@
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Literal, Optional
 
 from pydantic import BaseModel
 
 
 class TrainingSessionCreate(BaseModel):
     opening_id: int
+    mode: Literal["full", "weak"] = "full"
+    from_node_id: Optional[int] = None
 
 
 class TrainingAnswerCreate(BaseModel):
     node_id: int
     move: str
+    hint_used: bool = False
 
 
 class TrainingSessionRead(BaseModel):

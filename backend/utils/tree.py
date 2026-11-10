@@ -78,8 +78,35 @@ def build_tree(nodes: Sequence[Node]) -> dict:
             "fen": node.fen,
             "ply": node.ply,
             "order_index": node.order_index,
+            "name": node.name,
             "comment": node.comment,
+            "classification": node.classification,
             "children": [to_dict(child) for child in children],
         }
 
     return to_dict(roots[0])
+
+def normalize_fen(fen: str) -> str:
+    return " ".join(fen.split()[:4])
+
+
+def _format_move_path(moves: Sequence[str]) -> str:
+    parts: list[str] = []
+    for index, san in enumerate(moves):
+        if index % 2 == 0:
+            parts.append(f"{index // 2 + 1}. {san}")
+        else:
+            parts.append(str(san))
+    return " ".join(parts)
+
+
+def node_path_san(nodes: Sequence[Node], node_id: int) -> str:
+    by_id = {node.id: node for node in nodes}
+    moves: list[str] = []
+    current = by_id.get(node_id)
+    while current is not None and current.parent_id is not None:
+        if current.move_san:
+            moves.append(current.move_san)
+        current = by_id.get(current.parent_id)
+    moves.reverse()
+    return _format_move_path(moves)

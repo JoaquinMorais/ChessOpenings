@@ -14,6 +14,9 @@ class TrainingNode:
     fen: str
     ply: int
     order_index: int
+    name: Optional[str] = None
+    comment: Optional[str] = None
+    classification: Optional[str] = None
     children: List["TrainingNode"] = field(default_factory=list)
 
 
@@ -47,6 +50,9 @@ def _serialize_tree(node: TrainingNode, rng: random.Random) -> Dict[str, Any]:
         "fen": node.fen,
         "ply": node.ply,
         "order_index": node.order_index,
+        "name": node.name,
+        "comment": node.comment,
+        "classification": node.classification,
         "children": [_serialize_tree(child, rng) for child in ordered_children],
     }
 
@@ -72,6 +78,34 @@ def _pending_in_dfs_order(pending: List[int], order: List[int]) -> List[int]:
     return [node_id for node_id in order if node_id in pending_set]
 
 
+def _scope_order(
+    full_order: List[int],
+    parent: Dict[int, Optional[int]],
+    start_id: int,
+) -> List[int]:
+    def in_subtree(node_id: int) -> bool:
+        current: Optional[int] = node_id
+        while current is not None:
+            if current == start_id:
+                return True
+            current = parent[current]
+        return False
+
+    return [node_id for node_id in full_order if in_subtree(node_id)]
+
+
+def _ancestor_ids(
+    start_id: int,
+    parent: Dict[int, Optional[int]],
+) -> List[int]:
+    ids: List[int] = []
+    current: Optional[int] = start_id
+    while current is not None:
+        ids.append(current)
+        current = parent[current]
+    return ids
+
+
 def _lead_in(
     node_id: int,
     by_id: Dict[int, Dict[str, Any]],
@@ -88,6 +122,9 @@ def _lead_in(
             {
                 "uci": node["uci"],
                 "san": node["san"],
+                "name": node.get("name"),
+                "comment": node.get("comment"),
+                "classification": node.get("classification"),
                 "fast_forward": True if phase == "review" else current in seen_set,
             }
         )
@@ -109,6 +146,14 @@ def _question_step(
         "node_id": node_id,
         "fen": node["fen"],
         "lead_in": _lead_in(node_id, by_id, parent, state["seen"], phase),
+        "correct_move": {
+            "id": node["children"][0]["id"],
+            "uci": node["children"][0]["uci"],
+            "san": node["children"][0]["san"],
+            "name": node["children"][0].get("name"),
+            "comment": node["children"][0].get("comment"),
+            "classification": node["children"][0].get("classification"),
+        },
         "phase": phase,
         "progress": {
             "answered": state["answered"],
@@ -135,6 +180,8 @@ def _finished_step(state: State) -> Step:
 def _next_step(state: State) -> Step:
     by_id, parent, _ = _index_tree(state["tree"])
     order = state["order"]
+    allowed_raw = state.get("allowed_question_ids")
+    allowed_ids = set(allowed_raw) if allowed_raw is not None else None
 
     while state["phase"] == "traversal":
         if state["cursor"] >= len(order):
@@ -147,7 +194,9 @@ def _next_step(state: State) -> Step:
 
         node_id = order[state["cursor"]]
         node = by_id[node_id]
-        if _is_question(node, state["color"]):
+        if _is_question(node, state["color"]) and (
+            allowed_ids is None or node_id in allowed_ids
+        ):
             state["awaiting"] = node_id
             return _question_step(state, node_id, by_id, parent, "traversal")
 
@@ -170,28 +219,56 @@ def _next_step(state: State) -> Step:
     return _finished_step(state)
 
 
-def start(tree: TrainingNode, color: str, rng: random.Random) -> Tuple[State, Step]:
+def start(
+    tree: TrainingNode,
+    color: str,
+    rng: random.Random,
+    question_filter: Optional[set[int]] = None,
+    from_node_id: Optional[int] = None,
+) -> Tuple[State, Step]:
     serialized = _serialize_tree(tree, rng)
-    by_id, _, order = _index_tree(serialized)
+    by_id, parent, full_order = _index_tree(serialized)
 
-    questions_total = sum(
-        1 for node_id in order if _is_question(by_id[node_id], color)
+    if from_node_id is not None and from_node_id not in by_id:
+        raise ValueError("La posicion inicial del entrenamiento no existe.")
+
+    scope_root_id = from_node_id if from_node_id is not None else serialized["id"]
+    order = (
+        _scope_order(full_order, parent, scope_root_id)
+        if from_node_id is not None
+        else full_order
     )
+    initial_seen = (
+        _ancestor_ids(scope_root_id, parent)
+        if from_node_id is not None
+        else []
+    )
+
+    allowed_ids: List[int] = []
+    for node_id in order:
+        node = by_id[node_id]
+        if not _is_question(node, color):
+            continue
+        if question_filter is not None and node_id not in question_filter:
+            continue
+        allowed_ids.append(node_id)
 
     state: State = {
         "color": color,
         "tree": serialized,
         "order": order,
         "cursor": 0,
-        "seen": [],
+        "seen": initial_seen,
         "pending": [],
         "phase": "traversal",
         "review_queue": [],
         "review_index": 0,
         "awaiting": None,
-        "questions_total": questions_total,
+        "questions_total": len(allowed_ids),
         "first_try_correct": 0,
         "answered": 0,
+        "allowed_question_ids": allowed_ids,
+        "scope_root_id": scope_root_id,
     }
 
     step = _next_step(state)
@@ -199,10 +276,14 @@ def start(tree: TrainingNode, color: str, rng: random.Random) -> Tuple[State, St
 
 
 def answer(
-    state: State, node_id: int, move_uci: str
+    state: State,
+    node_id: int,
+    move_uci: str,
+    hint_used: bool = False,
 ) -> Tuple[AnswerResult, State, Step]:
     new_state = copy.deepcopy(state)
-    by_id, _, order = _index_tree(new_state["tree"])
+    by_id, _, _ = _index_tree(new_state["tree"])
+    order = new_state["order"]
 
     if new_state.get("awaiting") != node_id:
         raise ValueError("No se esperaba una respuesta para ese nodo.")
@@ -212,9 +293,12 @@ def answer(
         raise ValueError("La pregunta no tiene una jugada correcta.")
 
     correct_move = question["children"][0]
-    correct = move_uci.strip().lower() == correct_move["uci"]
+    move_correct = move_uci.strip().lower() == correct_move["uci"]
+    correct = move_correct and not hint_used
     result: AnswerResult = {
         "correct": correct,
+        "move_correct": move_correct,
+        "hint_used": hint_used,
         "correct_move_san": correct_move["san"],
         "correct_move_uci": correct_move["uci"],
         "node_id": node_id,

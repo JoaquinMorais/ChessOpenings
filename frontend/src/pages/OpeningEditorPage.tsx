@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { Chess } from "chess.js";
 
 import { ApiError } from "../api/client";
@@ -7,9 +7,15 @@ import { addMove, deleteNode, getTree, makeMain } from "../api/nodes";
 import { getOpening } from "../api/openings";
 import ChessBoardView from "../components/ChessBoardView";
 import type { BoardLastMove, BoardMove } from "../components/ChessBoardView";
+import CurrentMovePanel from "../components/CurrentMovePanel";
+import type { CurrentMovePanelHandle } from "../components/CurrentMovePanel";
 import VariationTree, {
   formatMoveLabel,
 } from "../components/VariationTree";
+import {
+  CLASSIFICATIONS,
+  getClassification,
+} from "../types/classifications";
 import type { NodeRead, TreeNode } from "../types/node";
 import type { OpeningSummary } from "../types/opening";
 
@@ -69,6 +75,22 @@ function insertChild(
   };
 }
 
+function updateNodeInTree(
+  root: TreeNode,
+  nodeId: number,
+  updates: Pick<TreeNode, "name" | "comment" | "classification">,
+): TreeNode {
+  if (root.id === nodeId) {
+    return { ...root, ...updates };
+  }
+  return {
+    ...root,
+    children: root.children.map((child) =>
+      updateNodeInTree(child, nodeId, updates),
+    ),
+  };
+}
+
 function toTreeNode(node: NodeRead): TreeNode {
   return {
     id: node.id,
@@ -77,7 +99,9 @@ function toTreeNode(node: NodeRead): TreeNode {
     fen: node.fen,
     ply: node.ply,
     order_index: node.order_index,
+    name: node.name,
     comment: node.comment,
+    classification: node.classification,
     children: [],
   };
 }
@@ -101,6 +125,7 @@ function uciToLastMove(uci: string | null): BoardLastMove | null {
 
 function OpeningEditorPage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const openingId = Number(id);
   const [opening, setOpening] = useState<OpeningSummary | null>(null);
   const [tree, setTree] = useState<TreeNode | null>(null);
@@ -111,6 +136,57 @@ function OpeningEditorPage() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [branchBusy, setBranchBusy] = useState(false);
+  const [boardFlipped, setBoardFlipped] = useState(false);
+  const [branchNotice, setBranchNotice] = useState<string | null>(null);
+  const [transpositionNotice, setTranspositionNotice] = useState<{
+    nodeId: number;
+    pathSan: string;
+  } | null>(null);
+  const [recentlyCreatedNodeId, setRecentlyCreatedNodeId] = useState<
+    number | null
+  >(null);
+  const branchNoticeTimerRef = useRef<number | null>(null);
+  const currentMovePanelRef = useRef<CurrentMovePanelHandle>(null);
+
+  useEffect(() => {
+    return () => {
+      if (branchNoticeTimerRef.current !== null) {
+        window.clearTimeout(branchNoticeTimerRef.current);
+      }
+    };
+  }, []);
+
+  const handleNodeSaved = useCallback((updated: NodeRead) => {
+    setTree((previous) =>
+      previous
+        ? updateNodeInTree(previous, updated.id, {
+            name: updated.name,
+            comment: updated.comment,
+            classification: updated.classification,
+          })
+        : previous,
+    );
+  }, []);
+
+  const flushCurrentMove = useCallback(async (): Promise<boolean> => {
+    return (await currentMovePanelRef.current?.flush()) ?? true;
+  }, []);
+
+  const navigateToNode = useCallback(
+    async (nodeId: number): Promise<boolean> => {
+      const saved = await flushCurrentMove();
+      if (!saved) {
+        return false;
+      }
+      setCurrentNodeId(nodeId);
+      setRecentlyCreatedNodeId(null);
+      setTranspositionNotice(null);
+      setMoveError(null);
+      setActionError(null);
+      return true;
+    },
+    [flushCurrentMove],
+  );
 
   const loadEditor = useCallback(async () => {
     if (!id || !Number.isInteger(openingId) || openingId <= 0) {
@@ -131,6 +207,7 @@ function OpeningEditorPage() {
       setOpening(openingData);
       setTree(treeData);
       setCurrentNodeId(treeData.id);
+      setRecentlyCreatedNodeId(null);
     } catch (error) {
       setLoadError(getErrorMessage(error));
     } finally {
@@ -169,12 +246,18 @@ function OpeningEditorPage() {
       : null;
   const currentFen = currentNode?.fen ?? tree?.fen ?? null;
   const currentLastMove = uciToLastMove(currentNode?.uci ?? null);
+  const currentClassification = getClassification(currentNode?.classification);
   const turn = currentFen ? new Chess(currentFen).turn() : null;
   const isUserTurn =
     opening && turn
       ? turn === (opening.color === "white" ? "w" : "b")
       : false;
-  const orientation = opening?.color === "black" ? "black" : "white";
+  const baseOrientation = opening?.color === "black" ? "black" : "white";
+  const orientation = boardFlipped
+    ? baseOrientation === "white"
+      ? "black"
+      : "white"
+    : baseOrientation;
   const principalChild = currentNode?.children[0] ?? null;
   const canGoBack =
     currentNode !== null &&
@@ -204,6 +287,26 @@ function OpeningEditorPage() {
           previous ? insertChild(previous, parentId, child) : previous,
         );
         setCurrentNodeId(created.id);
+        setRecentlyCreatedNodeId(created.id);
+        setTranspositionNotice(
+          created.transposition_of
+            ? {
+                nodeId: created.transposition_of.node_id,
+                pathSan: created.transposition_of.path_san,
+              }
+            : null,
+        );
+
+        if (created.order_index > 0) {
+          setBranchNotice("Nueva rama creada");
+          if (branchNoticeTimerRef.current !== null) {
+            window.clearTimeout(branchNoticeTimerRef.current);
+          }
+          branchNoticeTimerRef.current = window.setTimeout(
+            () => setBranchNotice(null),
+            2200,
+          );
+        }
       } catch (error) {
         setMoveError(getErrorMessage(error));
       } finally {
@@ -223,41 +326,122 @@ function OpeningEditorPage() {
         ? move
         : `${move.from}${move.to}${move.promotion ?? ""}`;
     const existing = currentNode.children.find((child) => child.uci === uci);
-    if (existing) {
-      setCurrentNodeId(existing.id);
-      setMoveError(null);
-      setActionError(null);
-      return true;
-    }
 
-    void saveMove(opening.id, currentNode.id, uci);
+    const execute = async () => {
+      const saved = await flushCurrentMove();
+      if (!saved) {
+        return;
+      }
+      if (existing) {
+        setCurrentNodeId(existing.id);
+        setRecentlyCreatedNodeId(null);
+        setTranspositionNotice(null);
+        setMoveError(null);
+        setActionError(null);
+        return;
+      }
+      await saveMove(opening.id, currentNode.id, uci);
+    };
+
+    void execute();
     return true;
   };
 
-  const goBack = () => {
+  const goBack = async () => {
     if (!currentNode || !index) {
       return;
     }
     const parentId = index.parentById.get(currentNode.id);
     if (parentId != null) {
-      setCurrentNodeId(parentId);
-      setMoveError(null);
+      await navigateToNode(parentId);
     }
   };
 
-  const goForward = () => {
+  const goForward = async () => {
     if (principalChild) {
-      setCurrentNodeId(principalChild.id);
-      setMoveError(null);
+      await navigateToNode(principalChild.id);
     }
   };
 
-  const goStart = () => {
+  const goStart = async () => {
     if (tree) {
-      setCurrentNodeId(tree.id);
-      setMoveError(null);
+      await navigateToNode(tree.id);
     }
   };
+
+  const handleTrainFromHere = async () => {
+    if (!currentNode) {
+      return;
+    }
+    const saved = await flushCurrentMove();
+    if (!saved) {
+      return;
+    }
+    navigate(
+      `/openings/${openingId}/train?from_node_id=${currentNode.id}`,
+    );
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (
+        target?.closest(
+          "input, textarea, select, [contenteditable='true']",
+        )
+      ) {
+        return;
+      }
+      if (event.ctrlKey || event.metaKey || event.altKey) {
+        return;
+      }
+
+      if (event.key === "ArrowLeft") {
+        if (!canGoBack || branchBusy) {
+          return;
+        }
+        event.preventDefault();
+        void goBack();
+        return;
+      }
+      if (event.key === "ArrowRight") {
+        if (!canGoForward || branchBusy) {
+          return;
+        }
+        event.preventDefault();
+        void goForward();
+        return;
+      }
+      if (event.key === "Home") {
+        if (atStart || branchBusy) {
+          return;
+        }
+        event.preventDefault();
+        void goStart();
+        return;
+      }
+      if (/^[0-9]$/.test(event.key)) {
+        const index = event.key === "0" ? 9 : Number(event.key) - 1;
+        const classification = CLASSIFICATIONS[index];
+        if (!classification) {
+          return;
+        }
+        event.preventDefault();
+        currentMovePanelRef.current?.classify(classification.key);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [
+    atStart,
+    branchBusy,
+    canGoBack,
+    canGoForward,
+    goBack,
+    goForward,
+    goStart,
+  ]);
 
   const handleMakeMain = async () => {
     if (
@@ -273,6 +457,10 @@ function OpeningEditorPage() {
     setActionError(null);
     setMoveError(null);
     try {
+      const saved = await flushCurrentMove();
+      if (!saved) {
+        return;
+      }
       await makeMain(currentNode.id);
       await refreshTree(currentNode.id, currentParentId);
     } catch (error) {
@@ -362,6 +550,12 @@ function OpeningEditorPage() {
 
   return (
     <section className="page">
+      {branchNotice && (
+        <div className="branch-toast" role="status">
+          {branchNotice}
+        </div>
+      )}
+
       <div className="page-toolbar">
         <div className="page-heading">
           <p className="eyebrow">Editor</p>
@@ -406,6 +600,33 @@ function OpeningEditorPage() {
         </div>
       )}
 
+      {transpositionNotice && (
+        <div className="alert alert--info" role="status">
+          <p>
+            Esta posición ya existe en:{" "}
+            <code>{transpositionNotice.pathSan || "Inicio"}</code>
+          </p>
+          <div className="alert-actions">
+            <button
+              type="button"
+              className="button button--small"
+              onClick={() =>
+                void navigateToNode(transpositionNotice.nodeId)
+              }
+            >
+              Ir a esa rama
+            </button>
+            <button
+              type="button"
+              className="button button--small button--ghost"
+              onClick={() => setTranspositionNotice(null)}
+            >
+              Cerrar
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="editor-layout">
         <div className="editor-board">
           <ChessBoardView
@@ -413,6 +634,14 @@ function OpeningEditorPage() {
             orientation={orientation}
             disabled={saving || branchBusy}
             lastMove={currentLastMove}
+            lastMoveBadge={
+              currentLastMove && currentClassification
+                ? {
+                    symbol: currentClassification.symbol,
+                    color: currentClassification.color,
+                  }
+                : null
+            }
             onMove={handleMove}
           />
           {(saving || branchBusy) && (
@@ -420,6 +649,14 @@ function OpeningEditorPage() {
               {saving ? "Guardando jugada..." : "Actualizando ramas..."}
             </p>
           )}
+
+          <CurrentMovePanel
+            ref={currentMovePanelRef}
+            node={currentNode}
+            isRoot={currentNode.id === tree.id}
+            highlightClassification={currentNode.id === recentlyCreatedNodeId}
+            onSaved={handleNodeSaved}
+          />
         </div>
 
         <aside className="editor-sidebar">
@@ -429,28 +666,47 @@ function OpeningEditorPage() {
               <button
                 type="button"
                 className="button button--ghost"
-                onClick={goStart}
+                onClick={() => void goStart()}
                 disabled={atStart || branchBusy}
+                title="Ir al inicio (Home)"
               >
                 Inicio
               </button>
               <button
                 type="button"
                 className="button button--ghost"
-                onClick={goBack}
+                onClick={() => void goBack()}
                 disabled={!canGoBack || branchBusy}
+                title="Atrás (←)"
               >
                 Atrás
               </button>
               <button
                 type="button"
                 className="button button--ghost"
-                onClick={goForward}
+                onClick={() => void goForward()}
                 disabled={!canGoForward || branchBusy}
+                title="Adelante (→)"
               >
                 Adelante
               </button>
             </div>
+            <button
+              type="button"
+              className="button button--small editor-train-button"
+              onClick={() => setBoardFlipped((current) => !current)}
+              title="Cambiar orientación visual del tablero"
+            >
+              Voltear tablero
+            </button>
+            <button
+              type="button"
+              className="button button--small editor-train-button"
+              onClick={() => void handleTrainFromHere()}
+              disabled={branchBusy}
+            >
+              Entrenar desde acá
+            </button>
           </section>
 
           <section className="panel editor-tree-panel">
@@ -462,9 +718,7 @@ function OpeningEditorPage() {
                 if (branchBusy) {
                   return;
                 }
-                setCurrentNodeId(nodeId);
-                setMoveError(null);
-                setActionError(null);
+                void navigateToNode(nodeId);
               }}
             />
           </section>
@@ -483,9 +737,7 @@ function OpeningEditorPage() {
                         if (branchBusy) {
                           return;
                         }
-                        setCurrentNodeId(response.id);
-                        setMoveError(null);
-                        setActionError(null);
+                        void navigateToNode(response.id);
                       }}
                       disabled={branchBusy}
                     >

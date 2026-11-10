@@ -18,3 +18,7 @@ class OpeningRead(BaseModel):
     color: str
     node_count: int
     accuracy: Optional[float] = None
+    in_seed: bool = False
+
+class SeedFileRead(BaseModel):
+    path: str

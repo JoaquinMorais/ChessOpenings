@@ -8,6 +8,17 @@ class MoveCreate(BaseModel):
     move: str
 
 
+class NodeUpdate(BaseModel):
+    name: Optional[str] = None
+    comment: Optional[str] = None
+    classification: Optional[str] = None
+
+
+class TranspositionInfo(BaseModel):
+    node_id: int
+    path_san: str
+
+
 class NodeRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -19,7 +30,10 @@ class NodeRead(BaseModel):
     fen: str
     ply: int
     order_index: int
+    name: Optional[str] = None
     comment: Optional[str] = None
+    classification: Optional[str] = None
+    transposition_of: Optional[TranspositionInfo] = None
 
 
 class NodeTree(BaseModel):
@@ -29,7 +43,9 @@ class NodeTree(BaseModel):
     fen: str
     ply: int
     order_index: int
+    name: Optional[str] = None
     comment: Optional[str] = None
+    classification: Optional[str] = None
     children: list["NodeTree"] = []
 
 

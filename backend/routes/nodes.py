@@ -2,12 +2,33 @@ from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlmodel import Session, select
 
 from config.database import get_session
+from models.classification import Classification
 from models.node import Node
 from models.opening import Opening
-from schemas.node_schema import MoveCreate, NodeRead, NodeTree
-from utils.tree import IllegalMoveError, apply_move, build_tree, side_to_move
+from schemas.node_schema import (
+    MoveCreate,
+    NodeRead,
+    NodeTree,
+    NodeUpdate,
+    TranspositionInfo,
+)
+from utils.tree import (
+    IllegalMoveError,
+    apply_move,
+    build_tree,
+    node_path_san,
+    normalize_fen,
+    side_to_move,
+)
 
 router = APIRouter(tags=["nodes"])
+
+
+def _normalize_optional_text(value: str | None) -> str | None:
+    if value is None:
+        return None
+    trimmed = value.strip()
+    return trimmed or None
 
 
 @router.post("/openings/{opening_id}/moves", response_model=NodeRead)
@@ -48,6 +69,19 @@ def add_move(
     siblings = session.exec(select(Node).where(Node.parent_id == parent.id)).all()
     order_index = (max((n.order_index for n in siblings), default=-1) + 1)
 
+    opening_nodes = session.exec(
+        select(Node).where(Node.opening_id == opening_id)
+    ).all()
+    new_fen_key = normalize_fen(result.fen)
+    transposition: TranspositionInfo | None = None
+    for other in sorted(opening_nodes, key=lambda item: item.id):
+        if normalize_fen(other.fen) == new_fen_key:
+            transposition = TranspositionInfo(
+                node_id=other.id,
+                path_san=node_path_san(opening_nodes, other.id),
+            )
+            break
+
     node = Node(
         opening_id=opening_id,
         parent_id=parent.id,
@@ -61,7 +95,10 @@ def add_move(
     session.commit()
     session.refresh(node)
     response.status_code = 201
-    return node
+
+    node_read = NodeRead.model_validate(node)
+    node_read.transposition_of = transposition
+    return node_read
 
 
 @router.get("/openings/{opening_id}/tree", response_model=NodeTree)
@@ -75,6 +112,53 @@ def get_tree(opening_id: int, session: Session = Depends(get_session)):
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
     return tree
+
+
+@router.patch("/nodes/{node_id}", response_model=NodeRead)
+def update_node(
+    node_id: int,
+    payload: NodeUpdate,
+    session: Session = Depends(get_session),
+):
+    node = session.get(Node, node_id)
+    if not node:
+        raise HTTPException(status_code=404, detail="El nodo no existe.")
+    if node.parent_id is None:
+        raise HTTPException(
+            status_code=409,
+            detail="No se puede editar la raiz de la apertura.",
+        )
+
+    fields = payload.model_fields_set
+    if "name" in fields:
+        name = _normalize_optional_text(payload.name)
+        if name is not None and len(name) > 80:
+            raise HTTPException(
+                status_code=422,
+                detail="El nombre de la rama no puede superar los 80 caracteres.",
+            )
+        node.name = name
+
+    if "comment" in fields:
+        node.comment = _normalize_optional_text(payload.comment)
+
+    if "classification" in fields:
+        value = _normalize_optional_text(payload.classification)
+        if value is None:
+            node.classification = None
+        else:
+            try:
+                node.classification = Classification(value).value
+            except ValueError as exc:
+                raise HTTPException(
+                    status_code=422,
+                    detail="La clasificacion no es valida.",
+                ) from exc
+
+    session.add(node)
+    session.commit()
+    session.refresh(node)
+    return node
 
 
 @router.delete("/nodes/{node_id}", status_code=204)

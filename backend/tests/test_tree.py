@@ -77,3 +77,11 @@ def test_make_main(client: TestClient):
 def test_tree_not_found(client: TestClient):
     response = client.get(f"{BASE}/9999/tree")
     assert response.status_code == 404
+
+def test_normalize_fen_ignores_move_counters():
+    from utils.tree import normalize_fen
+
+    left = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+    right = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 8 42"
+
+    assert normalize_fen(left) == normalize_fen(right)

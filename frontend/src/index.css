@@ -596,3 +596,115 @@ button {
     grid-template-columns: 1fr;
   }
 }
+
+.editor-tree-panel {
+  max-height: 24rem;
+  overflow: auto;
+}
+
+.variation-tree {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.variation-root,
+.variation-node {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.variation-list {
+  list-style: none;
+  margin: 0.1rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.15rem;
+}
+
+.variation-item {
+  padding-left: 0.4rem;
+}
+
+.variation-item--branch {
+  margin-left: 0.9rem;
+  padding-left: 0.6rem;
+  border-left: 2px solid rgba(31, 61, 43, 0.18);
+}
+
+.variation-button {
+  width: 100%;
+  border: 0;
+  border-radius: 0.45rem;
+  padding: 0.35rem 0.5rem;
+  background: transparent;
+  color: #425346;
+  font: inherit;
+  font-size: 0.86rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.variation-button:hover {
+  background: rgba(31, 61, 43, 0.08);
+}
+
+.variation-button--main {
+  color: #1f3d2b;
+  font-weight: 700;
+}
+
+.variation-button--root {
+  color: #617064;
+  font-weight: 800;
+}
+
+.variation-button--current {
+  background: #1f3d2b;
+  color: #f6f8f2;
+  font-weight: 800;
+}
+
+.variation-button--current:hover {
+  background: #2c563c;
+}
+
+.response-list {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.response-button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  width: 100%;
+  background: rgba(31, 61, 43, 0.08);
+  color: #1f3d2b;
+  text-align: left;
+}
+
+.response-button:hover {
+  background: rgba(31, 61, 43, 0.16);
+}
+
+.response-badge {
+  color: #617064;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.branch-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.75rem;
+}
+
+.editor-hint {
+  margin: 0.65rem 0 0;
+  color: #617064;
+  font-size: 0.82rem;
+}

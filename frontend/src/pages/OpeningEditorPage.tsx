@@ -3,9 +3,12 @@ import { Link, useParams } from "react-router-dom";
 import { Chess, type Move, type Square } from "chess.js";
 
 import { ApiError } from "../api/client";
-import { addMove, getTree } from "../api/nodes";
+import { addMove, deleteNode, getTree, makeMain } from "../api/nodes";
 import { getOpening } from "../api/openings";
 import OpeningBoard from "../components/OpeningBoard";
+import VariationTree, {
+  formatMoveLabel,
+} from "../components/VariationTree";
 import type { NodeRead, TreeNode } from "../types/node";
 import type { OpeningSummary } from "../types/opening";
 
@@ -78,18 +81,30 @@ function toTreeNode(node: NodeRead): TreeNode {
   };
 }
 
+function countSubtree(node: TreeNode): number {
+  return (
+    1 +
+    node.children.reduce(
+      (total, child) => total + countSubtree(child),
+      0,
+    )
+  );
+}
+
 function OpeningEditorPage() {
   const { id } = useParams<{ id: string }>();
+  const openingId = Number(id);
   const [opening, setOpening] = useState<OpeningSummary | null>(null);
   const [tree, setTree] = useState<TreeNode | null>(null);
   const [currentNodeId, setCurrentNodeId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [moveError, setMoveError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [branchBusy, setBranchBusy] = useState(false);
 
   const loadEditor = useCallback(async () => {
-    const openingId = Number(id);
     if (!id || !Number.isInteger(openingId) || openingId <= 0) {
       setLoading(false);
       setLoadError("La apertura no existe.");
@@ -99,6 +114,7 @@ function OpeningEditorPage() {
     setLoading(true);
     setLoadError(null);
     setMoveError(null);
+    setActionError(null);
     try {
       const [openingData, treeData] = await Promise.all([
         getOpening(openingId),
@@ -112,11 +128,31 @@ function OpeningEditorPage() {
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, openingId]);
 
   useEffect(() => {
     void loadEditor();
   }, [loadEditor]);
+
+  const refreshTree = useCallback(
+    async (preferredId: number | null, fallbackId: number | null) => {
+      if (!Number.isInteger(openingId) || openingId <= 0) {
+        return;
+      }
+      const treeData = await getTree(openingId);
+      const nextIndex = indexTree(treeData);
+      setTree(treeData);
+
+      const candidates = [preferredId, fallbackId, treeData.id];
+      const nextId =
+        candidates.find(
+          (candidate): candidate is number =>
+            candidate !== null && nextIndex.byId.has(candidate),
+        ) ?? treeData.id;
+      setCurrentNodeId(nextId);
+    },
+    [openingId],
+  );
 
   const index = useMemo(() => (tree ? indexTree(tree) : null), [tree]);
   const currentNode =
@@ -137,11 +173,18 @@ function OpeningEditorPage() {
     index.parentById.get(currentNode.id) != null;
   const canGoForward = principalChild !== null;
   const atStart = tree !== null && currentNode?.id === tree.id;
+  const currentParentId =
+    currentNode && index
+      ? index.parentById.get(currentNode.id) ?? null
+      : null;
+  const currentIsMain = currentNode?.order_index === 0;
+  const rivalResponses = !isUserTurn ? currentNode?.children ?? [] : [];
 
   const saveMove = useCallback(
     async (openingId: number, parentId: number, uci: string) => {
       setSaving(true);
       setMoveError(null);
+      setActionError(null);
       try {
         const created = await addMove(openingId, {
           parent_id: parentId,
@@ -165,7 +208,7 @@ function OpeningEditorPage() {
     sourceSquare: string,
     targetSquare: string,
   ): boolean => {
-    if (!opening || !currentNode || saving) {
+    if (!opening || !currentNode || saving || branchBusy) {
       return false;
     }
 
@@ -195,6 +238,7 @@ function OpeningEditorPage() {
     if (existing) {
       setCurrentNodeId(existing.id);
       setMoveError(null);
+      setActionError(null);
       return true;
     }
 
@@ -224,6 +268,61 @@ function OpeningEditorPage() {
     if (tree) {
       setCurrentNodeId(tree.id);
       setMoveError(null);
+    }
+  };
+
+  const handleMakeMain = async () => {
+    if (
+      !currentNode ||
+      currentParentId === null ||
+      currentIsMain ||
+      branchBusy
+    ) {
+      return;
+    }
+
+    setBranchBusy(true);
+    setActionError(null);
+    setMoveError(null);
+    try {
+      await makeMain(currentNode.id);
+      await refreshTree(currentNode.id, currentParentId);
+    } catch (error) {
+      setActionError(getErrorMessage(error));
+    } finally {
+      setBranchBusy(false);
+    }
+  };
+
+  const handleDeleteBranch = async () => {
+    if (!currentNode || currentParentId === null || branchBusy) {
+      return;
+    }
+
+    const totalMoves = countSubtree(currentNode);
+    const moveLabel = currentNode.san
+      ? `"${currentNode.san}"`
+      : "esta rama";
+    const moveCount =
+      totalMoves === 1 ? "1 jugada" : `${totalMoves} jugadas`;
+    const confirmed = window.confirm(
+      `¿Eliminar ${moveLabel}? Se borrarán ${moveCount}, incluyendo sus subramas.`,
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    setBranchBusy(true);
+    setActionError(null);
+    setMoveError(null);
+    try {
+      await deleteNode(currentNode.id);
+      setCurrentNodeId(currentParentId);
+      await refreshTree(null, currentParentId);
+    } catch (error) {
+      setActionError(getErrorMessage(error));
+    } finally {
+      setBranchBusy(false);
     }
   };
 
@@ -310,16 +409,27 @@ function OpeningEditorPage() {
         </div>
       )}
 
+      {actionError && (
+        <div className="alert" role="alert">
+          <p>{actionError}</p>
+          <button type="button" onClick={() => setActionError(null)}>
+            Cerrar
+          </button>
+        </div>
+      )}
+
       <div className="editor-layout">
         <div className="editor-board">
           <OpeningBoard
             fen={currentFen}
             orientation={orientation}
-            disabled={saving}
+            disabled={saving || branchBusy}
             onPieceDrop={handlePieceDrop}
           />
-          {saving && (
-            <p className="state-message">Guardando jugada...</p>
+          {(saving || branchBusy) && (
+            <p className="state-message">
+              {saving ? "Guardando jugada..." : "Actualizando ramas..."}
+            </p>
           )}
         </div>
 
@@ -331,7 +441,7 @@ function OpeningEditorPage() {
                 type="button"
                 className="button button--ghost"
                 onClick={goStart}
-                disabled={atStart}
+                disabled={atStart || branchBusy}
               >
                 Inicio
               </button>
@@ -339,7 +449,7 @@ function OpeningEditorPage() {
                 type="button"
                 className="button button--ghost"
                 onClick={goBack}
-                disabled={!canGoBack}
+                disabled={!canGoBack || branchBusy}
               >
                 Atrás
               </button>
@@ -347,12 +457,94 @@ function OpeningEditorPage() {
                 type="button"
                 className="button button--ghost"
                 onClick={goForward}
-                disabled={!canGoForward}
+                disabled={!canGoForward || branchBusy}
               >
                 Adelante
               </button>
             </div>
           </section>
+
+          <section className="panel editor-tree-panel">
+            <p className="card-label">Jugadas</p>
+            <VariationTree
+              root={tree}
+              currentNodeId={currentNode.id}
+              onSelect={(nodeId) => {
+                if (branchBusy) {
+                  return;
+                }
+                setCurrentNodeId(nodeId);
+                setMoveError(null);
+                setActionError(null);
+              }}
+            />
+          </section>
+
+          {!isUserTurn && (
+            <section className="panel">
+              <p className="card-label">Respuestas del rival</p>
+              {rivalResponses.length > 0 ? (
+                <div className="response-list">
+                  {rivalResponses.map((response) => (
+                    <button
+                      key={response.id}
+                      type="button"
+                      className="button button--small response-button"
+                      onClick={() => {
+                        if (branchBusy) {
+                          return;
+                        }
+                        setCurrentNodeId(response.id);
+                        setMoveError(null);
+                        setActionError(null);
+                      }}
+                      disabled={branchBusy}
+                    >
+                      <span>{formatMoveLabel(response)}</span>
+                      {response.order_index === 0 && (
+                        <span className="response-badge">Principal</span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p className="editor-info">
+                  No hay respuestas cargadas. Juega en el tablero para agregar
+                  una rama del rival.
+                </p>
+              )}
+            </section>
+          )}
+
+          {currentParentId !== null && (
+            <section className="panel">
+              <p className="card-label">Rama actual</p>
+              <p className="editor-info">{formatMoveLabel(currentNode)}</p>
+              <div className="branch-actions">
+                <button
+                  type="button"
+                  className="button button--small"
+                  onClick={() => void handleMakeMain()}
+                  disabled={branchBusy || currentIsMain}
+                >
+                  {branchBusy ? "Actualizando..." : "Hacer principal"}
+                </button>
+                <button
+                  type="button"
+                  className="button button--small button--danger"
+                  onClick={() => void handleDeleteBranch()}
+                  disabled={branchBusy}
+                >
+                  {branchBusy ? "Actualizando..." : "Eliminar rama"}
+                </button>
+              </div>
+              {currentIsMain && (
+                <p className="editor-hint">
+                  Esta rama ya es la principal.
+                </p>
+              )}
+            </section>
+          )}
 
           <section className="panel">
             <p className="card-label">Posición actual</p>

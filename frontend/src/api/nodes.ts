@@ -14,3 +14,15 @@ export function addMove(
     body: JSON.stringify(payload),
   });
 }
+
+export function makeMain(nodeId: number): Promise<NodeRead> {
+  return apiFetch<NodeRead>(`/nodes/${nodeId}/make-main`, {
+    method: "POST",
+  });
+}
+
+export function deleteNode(nodeId: number): Promise<void> {
+  return apiFetch<void>(`/nodes/${nodeId}`, {
+    method: "DELETE",
+  });
+}

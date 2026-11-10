@@ -22,6 +22,14 @@ const INITIAL_FEN = new Chess().fen();
 const RIVAL_DELAY = 600;
 const CORRECT_DELAY = 700;
 
+function getBoardWidth(): number {
+  const stacked = window.innerWidth <= 860;
+  const reservedWidth = stacked ? 64 : 360 + 96;
+  const availableWidth = window.innerWidth - reservedWidth;
+  const availableHeight = window.innerHeight - 160;
+  return Math.max(280, Math.min(760, availableWidth, availableHeight));
+}
+
 const COLOR_LABELS = {
   white: "Blancas",
   black: "Negras",
@@ -85,8 +93,15 @@ function TrainingPage() {
   const [squareStyles, setSquareStyles] = useState<
     Record<string, CSSProperties>
   >({});
+  const [boardWidth, setBoardWidth] = useState(getBoardWidth);
   const animationTokenRef = useRef(0);
   const startedForRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const handleResize = () => setBoardWidth(getBoardWidth());
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   const runStep = useCallback(
     async (nextStep: TrainingStep) => {
@@ -484,60 +499,7 @@ function TrainingPage() {
   }
 
   return (
-    <section className="page">
-      <div className="page-toolbar">
-        <div className="page-heading">
-          <p className="eyebrow">Entrenamiento</p>
-          <h2>{opening.name}</h2>
-          <p>{COLOR_LABELS[opening.color]}</p>
-        </div>
-        <Link className="button button--ghost" to="/openings">
-          Volver
-        </Link>
-      </div>
-
-      {progress && (
-        <section className="panel training-progress">
-          <div className="progress-header">
-            <span className="phase-pill">{phaseLabel}</span>
-            <span>
-              {progress.answered} / {progress.total} respondidas
-            </span>
-            <span>{progress.pending} pendiente(s)</span>
-          </div>
-          <div className="progress-bar">
-            <div style={{ width: `${progressPercent}%` }} />
-          </div>
-        </section>
-      )}
-
-      {error && (
-        <div className="alert" role="alert">
-          <p>{error}</p>
-          <button type="button" onClick={() => setError(null)}>
-            Cerrar
-          </button>
-        </div>
-      )}
-
-      {phase === "correct" && (
-        <div className="alert alert--success" role="status">
-          <p>¡Correcto!</p>
-        </div>
-      )}
-
-      {phase === "incorrect" && feedback && (
-        <div className="alert" role="alert">
-          <p>
-            <strong>Incorrecto.</strong> La jugada correcta es{" "}
-            <code>{feedback.correctSan}</code>.
-          </p>
-          <button type="button" onClick={handleContinue}>
-            Continuar
-          </button>
-        </div>
-      )}
-
+    <section className="page training-page">
       <div className="training-layout">
         <div className="training-board">
           <OpeningBoard
@@ -545,11 +507,63 @@ function TrainingPage() {
             orientation={orientation}
             disabled={phase !== "question"}
             squareStyles={squareStyles}
+            boardWidth={boardWidth}
             onPieceDrop={handlePieceDrop}
           />
         </div>
 
         <aside className="training-sidebar">
+          <section className="panel training-info">
+            <p className="eyebrow">Entrenamiento</p>
+            <h2>{opening.name}</h2>
+            <p className="editor-info">{COLOR_LABELS[opening.color]}</p>
+            <Link className="button button--ghost" to="/openings">
+              Volver
+            </Link>
+          </section>
+
+          {progress && (
+            <section className="panel training-progress">
+              <div className="progress-header">
+                <span className="phase-pill">{phaseLabel}</span>
+                <span>
+                  {progress.answered} / {progress.total} respondidas
+                </span>
+                <span>{progress.pending} pendiente(s)</span>
+              </div>
+              <div className="progress-bar">
+                <div style={{ width: `${progressPercent}%` }} />
+              </div>
+            </section>
+          )}
+
+          {error && (
+            <div className="alert" role="alert">
+              <p>{error}</p>
+              <button type="button" onClick={() => setError(null)}>
+                Cerrar
+              </button>
+            </div>
+          )}
+
+          {phase === "correct" && (
+            <div className="alert alert--success" role="status">
+              <p>¡Correcto!</p>
+            </div>
+          )}
+
+          {phase === "incorrect" && feedback && (
+            <div className="alert" role="alert">
+              <p>
+                <strong>Incorrecto.</strong> La jugada correcta es{" "}
+                <code>{feedback.correctSan}</code>.
+              </p>
+              <button type="button" onClick={handleContinue}>
+                Continuar
+              </button>
+            </div>
+          )}
+
           <section className="panel">
             <p className="card-label">Estado</p>
             {phase === "animating" && (

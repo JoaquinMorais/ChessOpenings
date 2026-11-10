@@ -6,7 +6,7 @@ Todo corre con `docker compose up`. Lee los archivos de `docs/` antes de empezar
 ## Stack
 - Backend: Python 3.12, FastAPI, SQLModel, PostgreSQL 16 (`postgres:16-alpine`), python-chess, pytest.
 - Frontend: React + Vite + TypeScript, `react-chessboard`, `chess.js`. Servido por nginx con proxy `/api` -> backend.
-- Infra: Docker Compose (servicios: `db`, `backend`, `frontend`; tests: `db-test`, `backend-test`).
+- Infra: Docker Compose (servicios: `db`, `backend`, `frontend`; tests: `backend-test`).
 
 ## Estructura del repo
 ```

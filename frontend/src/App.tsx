@@ -6,6 +6,8 @@ import OpeningEditorPage from "./pages/OpeningEditorPage";
 import OpeningStatsPage from "./pages/OpeningStatsPage";
 import OpeningsPage from "./pages/OpeningsPage";
 import PlaceholderPage from "./pages/PlaceholderPage";
+import StatsIndexPage from "./pages/StatsIndexPage";
+import TrainingIndexPage from "./pages/TrainingIndexPage";
 import TrainingPage from "./pages/TrainingPage";
 
 function App() {
@@ -17,8 +19,8 @@ function App() {
         <Route path="/openings/:id/edit" element={<OpeningEditorPage />} />
         <Route path="/openings/:id/train" element={<TrainingPage />} />
         <Route path="/openings/:id/stats" element={<OpeningStatsPage />} />
-        <Route path="/training" element={<PlaceholderPage title="Entrenar" />} />
-        <Route path="/stats" element={<PlaceholderPage title="Estadísticas" />} />
+        <Route path="/training" element={<TrainingIndexPage />} />
+        <Route path="/stats" element={<StatsIndexPage />} />
         <Route
           path="*"
           element={<PlaceholderPage title="Página no encontrada" />}

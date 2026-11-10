@@ -1,6 +1,9 @@
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useLocation } from "react-router-dom";
 
 function Layout() {
+  const location = useLocation();
+  const isTraining = /\/openings\/[^/]+\/train$/.test(location.pathname);
+
   return (
     <div className="app-shell">
       <header className="app-header">
@@ -20,7 +23,9 @@ function Layout() {
           <NavLink to="/stats">Estadísticas</NavLink>
         </nav>
       </header>
-      <main className="app-main">
+      <main
+        className={isTraining ? "app-main app-main--training" : "app-main"}
+      >
         <Outlet />
       </main>
     </div>

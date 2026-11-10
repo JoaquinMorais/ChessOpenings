@@ -16,6 +16,11 @@
   box-sizing: border-box;
 }
 
+html {
+  overflow-y: scroll;
+  scrollbar-gutter: stable;
+}
+
 body {
   margin: 0;
   min-width: 320px;
@@ -951,4 +956,76 @@ button {
 
 .sort-button:hover {
   color: #1f3d2b;
+}
+
+.app-main--training {
+  padding-top: 0.75rem;
+  padding-bottom: 1rem;
+}
+
+.training-page {
+  gap: 0.5rem;
+}
+
+.training-page .training-layout {
+  grid-template-columns: minmax(0, 1fr) 22rem;
+  gap: 1.25rem;
+}
+
+.training-page .training-board {
+  min-width: 0;
+  justify-items: center;
+}
+
+.training-page .training-board .board-wrapper {
+  width: fit-content;
+  max-width: 100%;
+  padding: 0.5rem;
+}
+
+.training-page .training-sidebar {
+  min-width: 0;
+  max-width: 22rem;
+}
+
+.training-page .training-sidebar > * {
+  min-width: 0;
+}
+
+.training-page .training-sidebar .alert {
+  width: 100%;
+  flex-wrap: wrap;
+}
+
+.training-page .training-sidebar .alert p {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.training-page .training-sidebar .alert button {
+  flex-shrink: 0;
+}
+
+.training-info .eyebrow {
+  margin-bottom: 0.25rem;
+}
+
+.training-info h2 {
+  margin-bottom: 0.25rem;
+  font-size: clamp(1.5rem, 2.5vw, 2.1rem);
+  letter-spacing: -0.03em;
+}
+
+.training-info .editor-info {
+  margin-bottom: 0.85rem;
+}
+
+@media (max-width: 860px) {
+  .training-page .training-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .training-page .training-sidebar {
+    max-width: none;
+  }
 }

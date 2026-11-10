@@ -51,9 +51,15 @@ Al arrancar con una base vacía se carga `backend/data/seed.json`:
 docker compose run --rm backend-test
 ```
 
-Los tests usan `db-test`, una base PostgreSQL independiente y efímera, y no tocan la base de desarrollo.
+Los tests usan una base PostgreSQL independiente llamada `chess_test` dentro del servicio `db`, así que no tocan la base de desarrollo.
 
-> Nota: `docker compose run --rm backend pytest` quedó obsoleto como comando de tests. El servicio `backend` apunta a la base de desarrollo y la configuración de tests bloquea esa ejecución por seguridad. Usar siempre `backend-test`.
+También se puede ejecutar el comando clásico:
+
+```bash
+docker compose run --rm backend pytest
+```
+
+En ambos casos la configuración de tests deriva y usa `chess_test` automáticamente.
 
 Build del frontend:
 
@@ -103,9 +109,6 @@ docker compose down
 
 # Bajar la app y borrar la base de datos (el seed se recarga al arrancar)
 docker compose down -v
-
-# Bajar también los servicios de test (db-test) y limpiar la red
-docker compose --profile test down -v
 
 # Reconstruir y levantar todo
 docker compose up --build

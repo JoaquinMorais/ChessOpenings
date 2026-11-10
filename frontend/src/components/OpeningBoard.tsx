@@ -6,6 +6,7 @@ interface OpeningBoardProps {
   orientation: "white" | "black";
   disabled: boolean;
   squareStyles?: Record<string, CSSProperties>;
+  boardWidth?: number;
   onPieceDrop: (sourceSquare: string, targetSquare: string) => boolean;
 }
 
@@ -14,6 +15,7 @@ function OpeningBoard({
   orientation,
   disabled,
   squareStyles,
+  boardWidth,
   onPieceDrop,
 }: OpeningBoardProps) {
   return (
@@ -22,6 +24,7 @@ function OpeningBoard({
         position={fen}
         boardOrientation={orientation}
         customSquareStyles={squareStyles}
+        boardWidth={boardWidth}
         onPieceDrop={(sourceSquare, targetSquare) =>
           onPieceDrop(sourceSquare, targetSquare)
         }

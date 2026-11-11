@@ -1,4 +1,5 @@
 import io
+import logging
 import re
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -9,6 +10,7 @@ from sqlmodel import Session, select
 from models.classification import Classification
 from models.node import Node
 from models.opening import Opening
+from utils.evaluation import parse_evaluation
 from utils.tree import build_tree
 
 VALID_CLASSIFICATIONS = {classification.value for classification in Classification}
@@ -25,10 +27,49 @@ CLASSIFICATION_TO_NAG = {
 }
 COMMENT_TAG_CLASSIFICATIONS = {"best", "excellent", "good", "book", "miss"}
 CLASSIFICATION_TAG_PATTERN = re.compile(r"\[%cls\s+([a-zA-Z_]+)\]", re.IGNORECASE)
+EVAL_TAG_PATTERN = re.compile(
+    r"\[%eval\s*([^,\]\s]*)(?:\s*,\s*[^\]]*)?\s*\]",
+    re.IGNORECASE,
+)
+CLK_TAG_PATTERN = re.compile(r"\[%clk\s+[^\]]*\]", re.IGNORECASE)
+NUMERIC_EVAL_PATTERN = re.compile(r"^[+-]?\d+(?:\.\d+)?$")
+MATE_EVAL_PATTERN = re.compile(r"^#([+-]?\d+)$")
+
+logger = logging.getLogger(__name__)
 
 
 class PgnImportError(ValueError):
     pass
+
+
+def _parse_pgn_evaluation(value: str) -> Dict[str, int]:
+    mate_match = MATE_EVAL_PATTERN.match(value)
+    if mate_match:
+        raw = {"mate": int(mate_match.group(1))}
+    elif NUMERIC_EVAL_PATTERN.match(value):
+        raw = {"cp": round(float(value) * 100)}
+    else:
+        raise ValueError("formato de evaluacion desconocido")
+
+    parse_evaluation(raw)
+    return raw
+
+
+def _format_pgn_evaluation(
+    evaluation: Optional[Dict[str, Any]],
+) -> Optional[str]:
+    if not evaluation:
+        return None
+
+    mate = evaluation.get("mate")
+    if isinstance(mate, int) and mate != 0:
+        return f"[%eval #{mate}]" if mate > 0 else f"[%eval #-{abs(mate)}]"
+
+    cp = evaluation.get("cp")
+    if isinstance(cp, int):
+        return f"[%eval {cp / 100:.2f}]"
+
+    return None
 
 
 def _format_move_path(moves: List[str]) -> str:
@@ -43,7 +84,12 @@ def _format_move_path(moves: List[str]) -> str:
 
 def _metadata_from_node(
     node: chess.pgn.ChildNode,
-) -> Tuple[Optional[str], Optional[str]]:
+    position: str,
+) -> Tuple[
+    Optional[str],
+    Optional[str],
+    Optional[Dict[str, int]],
+]:
     classification: Optional[str] = None
     for nag in sorted(node.nags):
         if nag in NAG_TO_CLASSIFICATION:
@@ -62,11 +108,31 @@ def _metadata_from_node(
             tag_classification = key
         return ""
 
-    cleaned_comment = CLASSIFICATION_TAG_PATTERN.sub(replace_tag, comment).strip()
+    cleaned_comment = CLASSIFICATION_TAG_PATTERN.sub(replace_tag, comment)
+    evaluation: Optional[Dict[str, int]] = None
+
+    def replace_eval(match: re.Match[str]) -> str:
+        nonlocal evaluation
+        value = match.group(1)
+        try:
+            parsed = _parse_pgn_evaluation(value)
+        except ValueError as exc:
+            logger.warning(
+                "Evaluacion PGN invalida en %s: %s",
+                position,
+                exc,
+            )
+            return ""
+        if evaluation is None:
+            evaluation = parsed
+        return ""
+
+    cleaned_comment = EVAL_TAG_PATTERN.sub(replace_eval, cleaned_comment)
+    cleaned_comment = CLK_TAG_PATTERN.sub("", cleaned_comment).strip()
     if classification is None:
         classification = tag_classification
 
-    return cleaned_comment or None, classification
+    return cleaned_comment or None, classification, evaluation
 
 
 def _own_color(color: str) -> chess.Color:
@@ -121,13 +187,17 @@ def _parse_variations(
 
         next_board = board.copy()
         next_board.push(move)
-        comment, classification = _metadata_from_node(child)
+        move_position = _format_move_path(path + [san])
+        comment, classification, evaluation = _metadata_from_node(
+            child, move_position
+        )
         parsed.append(
             {
                 "san": san,
                 "name": None,
                 "comment": comment,
                 "classification": classification,
+                "evaluation": evaluation,
                 "children": _parse_variations(
                     child,
                     next_board,
@@ -206,6 +276,14 @@ def _apply_metadata(game_node: chess.pgn.GameNode, node: Dict[str, Any]) -> None
     elif classification in COMMENT_TAG_CLASSIFICATIONS:
         tag = f"[%cls {classification}]"
         comment = f"{comment} {tag}".strip() if comment else tag
+
+    evaluation_tag = _format_pgn_evaluation(node.get("evaluation"))
+    if evaluation_tag:
+        comment = (
+            f"{comment} {evaluation_tag}".strip()
+            if comment
+            else evaluation_tag
+        )
 
     if comment:
         game_node.comment = comment

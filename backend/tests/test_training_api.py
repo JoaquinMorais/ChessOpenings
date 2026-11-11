@@ -209,6 +209,7 @@ def test_training_step_includes_move_metadata(client: TestClient):
         "name": "Respuesta e5",
         "comment": "Comentario de e5",
         "classification": "mistake",
+        "evaluation": None,
         "fast_forward": False,
     }
 

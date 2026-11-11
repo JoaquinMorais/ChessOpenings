@@ -7,14 +7,23 @@
         "name": "Elephant Gambit",
         "color": "black",
         "tree": {
+          "evaluation": {
+            "cp": 20
+          },
           "children": [
             {
               "san": "e4",
               "comment": "El rival abre con e4.",
+              "evaluation": {
+                "cp": 30
+              },
               "children": [
                 {
                   "san": "e5",
                   "comment": "Las negras ocupan el centro.",
+                  "evaluation": {
+                    "cp": 15
+                  },
                   "children": [
                     {
                       "san": "Nf3",
@@ -23,6 +32,9 @@
                         {
                           "san": "d5",
                           "comment": "Las negras entregan un peón central a cambio de actividad.",
+                          "evaluation": {
+                            "cp": -25
+                          },
                           "children": [],
                           "name": "Gambito Elefante"
                         }
@@ -32,6 +44,9 @@
                     {
                       "san": "Bc4",
                       "comment": "El rival evita la línea principal.",
+                      "evaluation": {
+                        "cp": 10
+                      },
                       "children": [
                         {
                           "san": "Nf6",
@@ -128,6 +143,81 @@
                           "san": "d6",
                           "comment": null,
                           "children": []
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "format": "chess-openings-trainer",
+      "version": 1,
+      "opening": {
+        "name": "Mate del pastor",
+        "color": "white",
+        "tree": {
+          "evaluation": {
+            "cp": 20
+          },
+          "children": [
+            {
+              "san": "e4",
+              "comment": null,
+              "evaluation": {
+                "cp": 30
+              },
+              "children": [
+                {
+                  "san": "e5",
+                  "comment": null,
+                  "evaluation": {
+                    "cp": 20
+                  },
+                  "children": [
+                    {
+                      "san": "Bc4",
+                      "comment": null,
+                      "evaluation": {
+                        "cp": 45
+                      },
+                      "children": [
+                        {
+                          "san": "Nc6",
+                          "comment": null,
+                          "evaluation": {
+                            "cp": 35
+                          },
+                          "children": [
+                            {
+                              "san": "Qh5",
+                              "comment": null,
+                              "evaluation": {
+                                "cp": 90
+                              },
+                              "children": [
+                                {
+                                  "san": "Nf6",
+                                  "comment": "Las negras no ven la amenaza de mate.",
+                                  "classification": "blunder",
+                                  "evaluation": {
+                                    "mate": 1
+                                  },
+                                  "children": [
+                                    {
+                                      "san": "Qxf7#",
+                                      "comment": "Mate del pastor.",
+                                      "children": []
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
                         }
                       ]
                     }

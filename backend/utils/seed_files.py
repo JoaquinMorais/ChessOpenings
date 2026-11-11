@@ -27,12 +27,43 @@ def slugify(name: str) -> str:
     return slug or "opening"
 
 
+def _opening_name_from_file(path: Path) -> str | None:
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+
+    opening = data.get("opening") if isinstance(data, dict) else None
+    name = opening.get("name") if isinstance(opening, dict) else None
+    return name if isinstance(name, str) else None
+
+
+def _find_seed_file(
+    name: str,
+    directory: Path | None = None,
+) -> Path | None:
+    target_directory = _resolve_directory(directory)
+    slug_path = target_directory / f"{slugify(name)}.json"
+    if slug_path.is_file():
+        return slug_path
+
+    if target_directory.is_dir():
+        for path in sorted(target_directory.glob("*.json")):
+            if _opening_name_from_file(path) == name:
+                return path
+
+    return None
+
+
 def seed_file_path(name: str, directory: Path | None = None) -> Path:
+    existing = _find_seed_file(name, directory)
+    if existing is not None:
+        return existing
     return _resolve_directory(directory) / f"{slugify(name)}.json"
 
 
 def seed_file_exists(name: str, directory: Path | None = None) -> bool:
-    return seed_file_path(name, directory).is_file()
+    return _find_seed_file(name, directory) is not None
 
 
 def write_seed_file(
@@ -69,7 +100,9 @@ def write_seed_file(
 
 
 def delete_seed_file(name: str, directory: Path | None = None) -> bool:
-    path = seed_file_path(name, directory)
+    path = _find_seed_file(name, directory)
+    if path is None:
+        return False
     try:
         path.unlink()
         return True

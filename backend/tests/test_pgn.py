@@ -1,3 +1,5 @@
+import logging
+
 from fastapi.testclient import TestClient
 
 BASE = "/api/openings"
@@ -17,6 +19,20 @@ def _import_pgn(
         f"{BASE}/import-pgn?on_own_branch={on_own_branch}",
         json=payload,
     )
+
+
+def _add_move(
+    client: TestClient,
+    opening_id: int,
+    parent_id: int,
+    move: str,
+) -> dict:
+    response = client.post(
+        f"{BASE}/{opening_id}/moves",
+        json={"parent_id": parent_id, "move": move},
+    )
+    assert response.status_code in (200, 201)
+    return response.json()
 
 
 def _mainline(tree: dict) -> list[dict]:
@@ -153,3 +169,139 @@ def test_import_export_pgn_all_classifications_round_trip(client: TestClient):
         (node["san"], node["classification"], node["comment"])
         for node in line2
     ] == expected
+
+
+def test_export_import_pgn_evaluations_round_trip(client: TestClient):
+    opening = client.post(
+        BASE,
+        json={"name": "PGN Eval Round Trip", "color": "white"},
+    ).json()
+    opening_id = opening["id"]
+    root_id = client.get(f"{BASE}/{opening_id}/tree").json()["id"]
+    e4 = _add_move(client, opening_id, root_id, "e4")
+    e5 = _add_move(client, opening_id, e4["id"], "e5")
+    nf3 = _add_move(client, opening_id, e5["id"], "Nf3")
+    nc6 = _add_move(client, opening_id, nf3["id"], "Nc6")
+
+    assert (
+        client.patch(
+            f"/api/nodes/{e4['id']}",
+            json={
+                "comment": "Comentario e4",
+                "classification": "book",
+                "evaluation": {"cp": 35},
+            },
+        ).status_code
+        == 200
+    )
+    assert (
+        client.patch(
+            f"/api/nodes/{e5['id']}",
+            json={"evaluation": {"mate": 3}},
+        ).status_code
+        == 200
+    )
+    assert (
+        client.patch(
+            f"/api/nodes/{nf3['id']}",
+            json={"evaluation": {"mate": -2}},
+        ).status_code
+        == 200
+    )
+    assert (
+        client.patch(
+            f"/api/nodes/{nc6['id']}",
+            json={"evaluation": {"cp": -120}},
+        ).status_code
+        == 200
+    )
+
+    exported = client.get(f"{BASE}/{opening_id}/export.pgn")
+    assert exported.status_code == 200
+    content = exported.text
+    assert "[%eval 0.35]" in content
+    assert "[%eval #3]" in content
+    assert "[%eval #-2]" in content
+    assert "[%eval -1.20]" in content
+    assert "[%cls book]" in content
+    assert "Comentario e4" in content
+
+    assert client.delete(f"{BASE}/{opening_id}").status_code == 204
+
+    imported = _import_pgn(client, content, "white")
+    assert imported.status_code == 201
+    imported_id = imported.json()["id"]
+    tree = client.get(f"{BASE}/{imported_id}/tree").json()
+    line = _mainline(tree)
+    assert [node["evaluation"] for node in line] == [
+        {"cp": 35},
+        {"mate": 3},
+        {"mate": -2},
+        {"cp": -120},
+    ]
+    assert line[0]["comment"] == "Comentario e4"
+    assert line[0]["classification"] == "book"
+    assert line[1]["comment"] is None
+    assert line[2]["comment"] is None
+    assert line[3]["comment"] is None
+
+
+def test_import_lichess_pgn_eval_and_clk(client: TestClient):
+    pgn = """
+[Event "Lichess Eval"]
+[Site "https://lichess.org/example"]
+[Result "*"]
+
+1. e4 { Mejor jugada [%eval 0.35,20] [%clk 0:10:00] }
+1... e5 { [%clk 0:09:58] [%eval -0.12,18] }
+2. Nf3 { [%eval #-2,30] [%clk 0:09:50] }
+2... Nc6 { [%eval #3,22] [%clk 0:09:40] } *
+"""
+    response = _import_pgn(client, pgn, "white")
+    assert response.status_code == 201
+
+    tree = client.get(f"{BASE}/{response.json()['id']}/tree").json()
+    line = _mainline(tree)
+    assert [node["evaluation"] for node in line] == [
+        {"cp": 35},
+        {"cp": -12},
+        {"mate": -2},
+        {"mate": 3},
+    ]
+    assert [node["comment"] for node in line] == [
+        "Mejor jugada",
+        None,
+        None,
+        None,
+    ]
+
+
+def test_import_pgn_invalid_evaluation_is_ignored(
+    client: TestClient,
+    caplog,
+):
+    pgn = """
+[Event "Invalid Eval"]
+[Result "*"]
+
+1. e4 {[%eval foo] Comentario} e5 {[%eval #0]}
+2. Nf3 {[%eval 100] Otra} *
+"""
+    caplog.set_level(logging.WARNING)
+    response = _import_pgn(client, pgn, "white")
+    assert response.status_code == 201
+
+    tree = client.get(f"{BASE}/{response.json()['id']}/tree").json()
+    line = _mainline(tree)
+    assert [node["evaluation"] for node in line] == [None, None, None]
+    assert [node["comment"] for node in line] == [
+        "Comentario",
+        None,
+        "Otra",
+    ]
+    warnings = [
+        record
+        for record in caplog.records
+        if "Evaluacion PGN invalida" in record.message
+    ]
+    assert len(warnings) == 3

@@ -9,13 +9,11 @@ import ChessBoardView from "../components/ChessBoardView";
 import type { BoardLastMove, BoardMove } from "../components/ChessBoardView";
 import CurrentMovePanel from "../components/CurrentMovePanel";
 import type { CurrentMovePanelHandle } from "../components/CurrentMovePanel";
+import EvalBar from "../components/EvalBar";
 import VariationTree, {
   formatMoveLabel,
 } from "../components/VariationTree";
-import {
-  CLASSIFICATIONS,
-  getClassification,
-} from "../types/classifications";
+import { CLASSIFICATIONS } from "../types/classifications";
 import type { NodeRead, TreeNode } from "../types/node";
 import type { OpeningSummary } from "../types/opening";
 
@@ -78,7 +76,10 @@ function insertChild(
 function updateNodeInTree(
   root: TreeNode,
   nodeId: number,
-  updates: Pick<TreeNode, "name" | "comment" | "classification">,
+  updates: Pick<
+    TreeNode,
+    "name" | "comment" | "classification" | "evaluation"
+  >,
 ): TreeNode {
   if (root.id === nodeId) {
     return { ...root, ...updates };
@@ -102,6 +103,7 @@ function toTreeNode(node: NodeRead): TreeNode {
     name: node.name,
     comment: node.comment,
     classification: node.classification,
+    evaluation: node.evaluation,
     children: [],
   };
 }
@@ -159,10 +161,11 @@ function OpeningEditorPage() {
   const handleNodeSaved = useCallback((updated: NodeRead) => {
     setTree((previous) =>
       previous
-        ? updateNodeInTree(previous, updated.id, {
+          ? updateNodeInTree(previous, updated.id, {
             name: updated.name,
             comment: updated.comment,
             classification: updated.classification,
+            evaluation: updated.evaluation,
           })
         : previous,
     );
@@ -246,7 +249,6 @@ function OpeningEditorPage() {
       : null;
   const currentFen = currentNode?.fen ?? tree?.fen ?? null;
   const currentLastMove = uciToLastMove(currentNode?.uci ?? null);
-  const currentClassification = getClassification(currentNode?.classification);
   const turn = currentFen ? new Chess(currentFen).turn() : null;
   const isUserTurn =
     opening && turn
@@ -629,21 +631,30 @@ function OpeningEditorPage() {
 
       <div className="editor-layout">
         <div className="editor-board">
-          <ChessBoardView
-            fen={currentFen}
-            orientation={orientation}
-            disabled={saving || branchBusy}
-            lastMove={currentLastMove}
-            lastMoveBadge={
-              currentLastMove && currentClassification
-                ? {
-                    symbol: currentClassification.symbol,
-                    color: currentClassification.color,
-                  }
-                : null
-            }
-            onMove={handleMove}
-          />
+          <div className="editor-board-row">
+            <div className="editor-evalbar">
+              <EvalBar
+                evaluation={currentNode.evaluation}
+                orientation={orientation}
+              />
+            </div>
+            <ChessBoardView
+              fen={currentFen}
+              orientation={orientation}
+              disabled={saving || branchBusy}
+              lastMove={currentLastMove}
+              badge={
+                currentLastMove && currentNode.classification
+                  ? {
+                      square: currentLastMove.to,
+                      classification: currentNode.classification,
+                    }
+                  : null
+              }
+              responsive
+              onMove={handleMove}
+            />
+          </div>
           {(saving || branchBusy) && (
             <p className="state-message">
               {saving ? "Guardando jugada..." : "Actualizando ramas..."}

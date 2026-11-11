@@ -7,7 +7,7 @@ import {
 
 interface ClassificationBadgeProps {
   classification: ClassificationKey | string | null;
-  size?: "sm" | "md" | "lg";
+  size?: "sm" | "md" | "lg" | "fill";
 }
 
 function hexToRgb(hex: string): [number, number, number] | null {

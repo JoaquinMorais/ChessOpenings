@@ -86,5 +86,6 @@ def answer_session(
         correct=result["correct"],
         correct_move_san=result["correct_move_san"],
         correct_move_uci=result["correct_move_uci"],
+        correct_move=result["correct_move"],
         next_step=step,
     )

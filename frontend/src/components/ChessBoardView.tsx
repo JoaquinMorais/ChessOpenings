@@ -1,8 +1,17 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type { CSSProperties } from "react";
 import { Chess, type Square } from "chess.js";
 import { Chessboard } from "react-chessboard";
 import { TouchBackend } from "react-dnd-touch-backend";
+
+import MoveBadgeOverlay from "./MoveBadgeOverlay";
 
 export interface BoardLastMove {
   from: string;
@@ -10,8 +19,8 @@ export interface BoardLastMove {
 }
 
 export interface BoardBadge {
-  symbol: string;
-  color: string;
+  square: string;
+  classification: string;
 }
 
 export type BoardMove =
@@ -24,8 +33,10 @@ interface ChessBoardViewProps {
   onMove: (move: BoardMove) => boolean | Promise<boolean>;
   lastMove: BoardLastMove | null;
   disabled: boolean;
+  pickupEnabled?: boolean;
   boardWidth?: number;
-  lastMoveBadge?: BoardBadge | null;
+  responsive?: boolean;
+  badge?: BoardBadge | null;
   hintSquare?: string | null;
 }
 
@@ -51,22 +62,6 @@ interface PromotionState {
   to: Square;
 }
 
-function escapeXml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&apos;");
-}
-
-function badgeBackground(symbol: string, color: string): string {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text x="82" y="26" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="700" fill="${escapeXml(
-    color,
-  )}">${escapeXml(symbol)}</text></svg>`;
-  return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
-}
-
 function toUci(move: BoardMove): string {
   return typeof move === "string"
     ? move
@@ -79,15 +74,25 @@ function ChessBoardView({
   onMove,
   lastMove,
   disabled,
+  pickupEnabled,
   boardWidth,
-  lastMoveBadge,
+  responsive = false,
+  badge,
   hintSquare,
 }: ChessBoardViewProps) {
   const [selectedSquare, setSelectedSquare] = useState<Square | null>(null);
   const [promotion, setPromotion] = useState<PromotionState | null>(null);
+  const [responsiveWidth, setResponsiveWidth] = useState<number | null>(null);
   const boardRef = useRef<HTMLDivElement>(null);
   const dragDotElementsRef = useRef<HTMLElement[]>([]);
   const game = useMemo(() => new Chess(fen), [fen]);
+  const pickupAvailable = pickupEnabled ?? !disabled;
+  const canPickUp = pickupAvailable && !promotion;
+  const canCommit = !disabled && !promotion;
+  const canCommitRef = useRef(canCommit);
+  const onMoveRef = useRef(onMove);
+  canCommitRef.current = canCommit;
+  onMoveRef.current = onMove;
 
   const clearDragDots = useCallback(() => {
     for (const element of dragDotElementsRef.current) {
@@ -100,18 +105,48 @@ function ChessBoardView({
     setSelectedSquare(null);
     setPromotion(null);
     clearDragDots();
-  }, [fen, disabled, clearDragDots]);
+  }, [fen, pickupAvailable, clearDragDots]);
+
+  useLayoutEffect(() => {
+    if (!responsive) {
+      setResponsiveWidth(null);
+      return;
+    }
+
+    const board = boardRef.current;
+    if (!board) {
+      return;
+    }
+
+    const updateWidth = () => {
+      const styles = window.getComputedStyle(board);
+      const padding =
+        Number.parseFloat(styles.paddingLeft) +
+        Number.parseFloat(styles.paddingRight);
+      const width = Math.floor(board.clientWidth - padding);
+      if (width > 0) {
+        setResponsiveWidth((current) =>
+          current === width ? current : width,
+        );
+      }
+    };
+
+    updateWidth();
+    const observer = new ResizeObserver(updateWidth);
+    observer.observe(board);
+    return () => observer.disconnect();
+  }, [responsive]);
 
   const legalMoves = useMemo(() => {
-    if (!selectedSquare || disabled) {
+    if (!selectedSquare || !canPickUp) {
       return [];
     }
     return game.moves({ square: selectedSquare, verbose: true });
-  }, [game, selectedSquare, disabled]);
+  }, [game, selectedSquare, canPickUp]);
 
   const applyDragDots = (sourceSquare: Square) => {
     clearDragDots();
-    if (disabled || promotion) {
+    if (!canPickUp) {
       return;
     }
 
@@ -156,7 +191,7 @@ function ChessBoardView({
       };
     }
 
-    if (!disabled) {
+    if (canPickUp) {
       for (const move of legalMoves) {
         const isCapture =
           move.flags.includes("c") || move.flags.includes("e");
@@ -176,21 +211,8 @@ function ChessBoardView({
       };
     }
 
-    if (lastMoveBadge && lastMove) {
-      const badge = badgeBackground(lastMoveBadge.symbol, lastMoveBadge.color);
-      const existing = styles[lastMove.to] ?? {};
-      styles[lastMove.to] = {
-        ...existing,
-        backgroundImage: existing.backgroundImage
-          ? `${badge}, ${existing.backgroundImage}`
-          : badge,
-        backgroundSize: existing.backgroundSize ?? "100% 100%",
-        backgroundPosition: existing.backgroundPosition ?? "center",
-      };
-    }
-
     return styles;
-  }, [disabled, hintSquare, lastMove, lastMoveBadge, legalMoves]);
+  }, [canPickUp, hintSquare, lastMove, legalMoves]);
 
   const isPromotionMove = (from: Square, to: Square): boolean => {
     const piece = game.get(from);
@@ -246,7 +268,7 @@ function ChessBoardView({
     to: Square,
     promotion?: string,
   ): boolean => {
-    const result = onMove(toUci({ from, to, promotion }));
+    const result = onMoveRef.current(toUci({ from, to, promotion }));
     if (typeof result === "boolean") {
       return result;
     }
@@ -264,7 +286,7 @@ function ChessBoardView({
   };
 
   const handleSquareClick = (square: Square) => {
-    if (disabled || promotion) {
+    if (!canPickUp) {
       return;
     }
 
@@ -280,6 +302,9 @@ function ChessBoardView({
 
     const castleTarget = findCastlingTarget(selectedSquare, square);
     if (castleTarget) {
+      if (!canCommit) {
+        return;
+      }
       executeMove(selectedSquare, castleTarget);
       setSelectedSquare(null);
       return;
@@ -287,6 +312,9 @@ function ChessBoardView({
 
     const target = legalMoves.find((move) => move.to === square);
     if (target) {
+      if (!canCommit) {
+        return;
+      }
       if (isPromotionMove(selectedSquare, square)) {
         setPromotion({ from: selectedSquare, to: square });
         setSelectedSquare(null);
@@ -313,7 +341,7 @@ function ChessBoardView({
     setSelectedSquare(null);
     clearDragDots();
 
-    if (disabled || promotion) {
+    if (!canCommitRef.current) {
       return false;
     }
 
@@ -338,37 +366,51 @@ function ChessBoardView({
   };
 
   const hasSquareStyles = Object.keys(squareStyles).length > 0;
-  const resolvedBoardWidth = boardWidth ?? 400;
+  const resolvedBoardWidth = responsive ? responsiveWidth : boardWidth ?? 400;
 
   return (
     <div className="board-wrapper" ref={boardRef}>
-      <Chessboard
-        position={fen}
-        boardOrientation={orientation}
-        boardWidth={resolvedBoardWidth}
-        customSquareStyles={hasSquareStyles ? squareStyles : undefined}
-        customDndBackend={TOUCH_CAPABLE ? TouchBackend : undefined}
-        customDndBackendOptions={
-          TOUCH_CAPABLE
-            ? { enableMouseEvents: true, enableTouchEvents: true }
-            : undefined
-        }
-        onSquareClick={(square) => handleSquareClick(square as Square)}
-        onPieceDragBegin={(_piece, sourceSquare) =>
-          applyDragDots(sourceSquare as Square)
-        }
-        onPieceDragEnd={clearDragDots}
-        onPieceDrop={(sourceSquare, targetSquare) =>
-          handlePieceDrop(
-            sourceSquare as Square,
-            targetSquare as Square,
-          )
-        }
-        isDraggablePiece={({ piece }) =>
-          !disabled && !promotion && piece[0] === game.turn()
-        }
-        arePiecesDraggable={!disabled && !promotion}
-      />
+      <div className="board-area">
+        {resolvedBoardWidth !== null && (
+          <Chessboard
+            key={responsive ? resolvedBoardWidth : undefined}
+            id={canPickUp ? "board-enabled" : "board-disabled"}
+            position={fen}
+            boardOrientation={orientation}
+            boardWidth={resolvedBoardWidth}
+            customSquareStyles={hasSquareStyles ? squareStyles : undefined}
+            customDndBackend={TOUCH_CAPABLE ? TouchBackend : undefined}
+            customDndBackendOptions={
+              TOUCH_CAPABLE
+                ? { enableMouseEvents: true, enableTouchEvents: true }
+                : undefined
+            }
+            onSquareClick={(square) =>
+              handleSquareClick(square as Square)
+            }
+            onPieceDragBegin={(_piece, sourceSquare) =>
+              applyDragDots(sourceSquare as Square)
+            }
+            onPieceDragEnd={clearDragDots}
+            onPieceDrop={(sourceSquare, targetSquare) =>
+              handlePieceDrop(
+                sourceSquare as Square,
+                targetSquare as Square,
+              )
+            }
+            isDraggablePiece={({ piece }) =>
+              canPickUp && piece[0] === game.turn()
+            }
+            arePiecesDraggable={canPickUp}
+          />
+        )}
+
+        <MoveBadgeOverlay
+          square={badge?.square ?? null}
+          classification={badge?.classification ?? null}
+          orientation={orientation}
+        />
+      </div>
 
       {promotion && (
         <div className="promotion-overlay" role="presentation">

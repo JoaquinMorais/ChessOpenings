@@ -14,7 +14,17 @@ import {
   CLASSIFICATIONS,
   type ClassificationKey,
 } from "../types/classifications";
-import type { NodeRead, TreeNode } from "../types/node";
+import type { Evaluation } from "../types/evaluation";
+import type {
+  NodeRead,
+  NodeUpdatePayload,
+  TreeNode,
+} from "../types/node";
+import {
+  EVAL_PRESETS,
+  formatEvaluation,
+  parseEvaluation,
+} from "../utils/evaluation";
 import ClassificationBadge from "./ClassificationBadge";
 
 interface CurrentMovePanelProps {
@@ -35,6 +45,11 @@ interface SaveValues {
   name: string;
   comment: string;
   classification: ClassificationKey | null;
+  evaluationText: string;
+}
+
+interface SnapshotValues extends SaveValues {
+  evaluation: Evaluation | null;
 }
 
 function getErrorMessage(error: unknown): string {
@@ -42,6 +57,34 @@ function getErrorMessage(error: unknown): string {
     return error.message;
   }
   return "Ocurrió un error inesperado.";
+}
+
+function parseEvaluationText(text: string): {
+  evaluation: Evaluation | null;
+  error: string | null;
+} {
+  try {
+    return { evaluation: parseEvaluation(text), error: null };
+  } catch (error) {
+    return {
+      evaluation: null,
+      error:
+        error instanceof Error ? error.message : "Evaluación inválida.",
+    };
+  }
+}
+
+function evaluationSignature(evaluation: Evaluation | null): string {
+  if (!evaluation) {
+    return "";
+  }
+  if (typeof evaluation.mate === "number" && evaluation.mate !== 0) {
+    return `mate:${evaluation.mate}`;
+  }
+  if (typeof evaluation.cp === "number") {
+    return `cp:${evaluation.cp}`;
+  }
+  return "";
 }
 
 const CurrentMovePanel = forwardRef<CurrentMovePanelHandle, CurrentMovePanelProps>(
@@ -53,45 +96,54 @@ const CurrentMovePanel = forwardRef<CurrentMovePanelHandle, CurrentMovePanelProp
     const [comment, setComment] = useState(node.comment ?? "");
     const [classification, setClassification] =
       useState<ClassificationKey | null>(node.classification);
+    const [evaluationText, setEvaluationText] = useState(
+      node.evaluation ? formatEvaluation(node.evaluation) : "",
+    );
     const [status, setStatus] = useState<SaveStatus>("saved");
     const [error, setError] = useState<string | null>(null);
-    const snapshotRef = useRef<SaveValues>({
+    const snapshotRef = useRef<SnapshotValues>({
       name: node.name ?? "",
       comment: node.comment ?? "",
       classification: node.classification,
+      evaluationText: node.evaluation ? formatEvaluation(node.evaluation) : "",
+      evaluation: node.evaluation,
     });
     const savingPromiseRef = useRef<Promise<boolean> | null>(null);
 
     useEffect(() => {
-      const next: SaveValues = {
+      const nextEvaluationText = node.evaluation
+        ? formatEvaluation(node.evaluation)
+        : "";
+      const next: SnapshotValues = {
         name: node.name ?? "",
         comment: node.comment ?? "",
         classification: node.classification,
+        evaluationText: nextEvaluationText,
+        evaluation: node.evaluation,
       };
       setName(next.name);
       setComment(next.comment);
       setClassification(next.classification);
+      setEvaluationText(nextEvaluationText);
       snapshotRef.current = next;
       setStatus("saved");
       setError(null);
     }, [node.id]);
 
-    const currentValues: SaveValues = {
-      name,
-      comment,
-      classification,
-    };
-    const isDirty =
+    const parsed = parseEvaluationText(evaluationText);
+    const metadataDirty =
       !isRoot &&
-      (currentValues.name !== snapshotRef.current.name ||
-        currentValues.comment !== snapshotRef.current.comment ||
-        currentValues.classification !== snapshotRef.current.classification);
+      (name !== snapshotRef.current.name ||
+        comment !== snapshotRef.current.comment ||
+        classification !== snapshotRef.current.classification);
+    const evaluationDirty = parsed.error
+      ? evaluationText !== snapshotRef.current.evaluationText
+      : evaluationSignature(parsed.evaluation) !==
+        evaluationSignature(snapshotRef.current.evaluation);
+    const isDirty = metadataDirty || evaluationDirty;
 
     const save = useCallback(
       async (overrides?: Partial<SaveValues>): Promise<boolean> => {
-        if (isRoot) {
-          return true;
-        }
         if (savingPromiseRef.current) {
           return savingPromiseRef.current;
         }
@@ -103,29 +155,58 @@ const CurrentMovePanel = forwardRef<CurrentMovePanelHandle, CurrentMovePanelProp
             overrides?.classification !== undefined
               ? overrides.classification
               : classification,
+          evaluationText:
+            overrides?.evaluationText ?? evaluationText,
         };
+        const currentEvaluation = parseEvaluationText(
+          values.evaluationText,
+        );
+        if (currentEvaluation.error) {
+          return false;
+        }
+
         const snapshot = snapshotRef.current;
-        const dirty =
-          values.name !== snapshot.name ||
-          values.comment !== snapshot.comment ||
-          values.classification !== snapshot.classification;
-        if (!dirty) {
+        const metadataChanged =
+          !isRoot &&
+          (values.name !== snapshot.name ||
+            values.comment !== snapshot.comment ||
+            values.classification !== snapshot.classification);
+        const evaluationChanged =
+          evaluationSignature(currentEvaluation.evaluation) !==
+          evaluationSignature(snapshot.evaluation);
+        if (!metadataChanged && !evaluationChanged) {
           return true;
+        }
+
+        const payload: NodeUpdatePayload = {};
+        if (!isRoot) {
+          payload.name = values.name;
+          payload.comment = values.comment;
+          payload.classification = values.classification;
+        }
+        if (evaluationChanged) {
+          payload.evaluation = currentEvaluation.evaluation;
         }
 
         const promise = (async () => {
           setStatus("saving");
           setError(null);
           try {
-            const updated = await updateNode(node.id, values);
-            const next: SaveValues = {
+            const updated = await updateNode(node.id, payload);
+            const nextEvaluationText = updated.evaluation
+              ? formatEvaluation(updated.evaluation)
+              : "";
+            const next: SnapshotValues = {
               name: updated.name ?? "",
               comment: updated.comment ?? "",
               classification: updated.classification ?? null,
+              evaluationText: nextEvaluationText,
+              evaluation: updated.evaluation ?? null,
             };
             setName(next.name);
             setComment(next.comment);
             setClassification(next.classification);
+            setEvaluationText(nextEvaluationText);
             snapshotRef.current = next;
             setStatus("saved");
             onSaved(updated);
@@ -142,7 +223,15 @@ const CurrentMovePanel = forwardRef<CurrentMovePanelHandle, CurrentMovePanelProp
         savingPromiseRef.current = promise;
         return promise;
       },
-      [classification, comment, isRoot, name, node.id, onSaved],
+      [
+        classification,
+        comment,
+        evaluationText,
+        isRoot,
+        name,
+        node.id,
+        onSaved,
+      ],
     );
 
     const classify = useCallback(
@@ -157,6 +246,18 @@ const CurrentMovePanel = forwardRef<CurrentMovePanelHandle, CurrentMovePanelProp
       [classification, isRoot, save, status],
     );
 
+    const applyEvaluation = useCallback(
+      (evaluation: Evaluation | null) => {
+        if (status === "saving") {
+          return;
+        }
+        const text = evaluation ? formatEvaluation(evaluation) : "";
+        setEvaluationText(text);
+        void save({ evaluationText: text });
+      },
+      [save, status],
+    );
+
     useImperativeHandle(
       ref,
       () => ({ flush: () => save(), classify }),
@@ -168,17 +269,18 @@ const CurrentMovePanel = forwardRef<CurrentMovePanelHandle, CurrentMovePanelProp
       void save();
     };
 
-    const statusLabel = isRoot
-      ? ""
-      : status === "saving"
+    const statusLabel =
+      status === "saving"
         ? "Guardando..."
         : status === "error"
           ? `Error: ${error ?? "No se pudo guardar."}`
-          : isDirty
-            ? "Sin guardar"
-            : "Guardado";
+          : parsed.error
+            ? `Error: ${parsed.error}`
+            : isDirty
+              ? "Sin guardar"
+              : "Guardado";
     const statusVariant =
-      status === "error"
+      status === "error" || parsed.error
         ? "error"
         : status === "saving"
           ? "saving"
@@ -193,49 +295,111 @@ const CurrentMovePanel = forwardRef<CurrentMovePanelHandle, CurrentMovePanelProp
           <h3>{node.san ?? "Inicio"}</h3>
         </div>
 
-        {isRoot ? (
-          <p className="editor-info">
-            La posición inicial no se puede editar.
-          </p>
-        ) : (
-          <form className="current-move-form" onSubmit={handleSubmit}>
+        <form className="current-move-form" onSubmit={handleSubmit}>
+          {!isRoot && (
+            <>
+              <label className="form-field">
+                <span>Nombre de la rama</span>
+                <input
+                  value={name}
+                  maxLength={80}
+                  onChange={(event) => setName(event.target.value)}
+                  placeholder="Ej. Variante Alapin"
+                />
+              </label>
+
+              <label className="form-field">
+                <span>Observaciones</span>
+                <textarea
+                  value={comment}
+                  rows={3}
+                  onChange={(event) => setComment(event.target.value)}
+                  placeholder="Notas, ideas o recordatorios sobre esta jugada"
+                />
+              </label>
+            </>
+          )}
+
+          {isRoot && (
+            <p className="editor-info">
+              En la posición inicial solo se puede editar la evaluación.
+            </p>
+          )}
+
+          <div className="evaluation-row">
             <label className="form-field">
-              <span>Nombre de la rama</span>
+              <span>Evaluación</span>
               <input
-                value={name}
-                maxLength={80}
-                onChange={(event) => setName(event.target.value)}
-                placeholder="Ej. Variante Alapin"
+                type="text"
+                value={evaluationText}
+                onChange={(event) =>
+                  setEvaluationText(event.target.value)
+                }
+                placeholder="ej. +0.35, -1,2, M3"
+                aria-invalid={parsed.error !== null}
+                aria-describedby={
+                  parsed.error ? "evaluation-error" : undefined
+                }
               />
             </label>
 
-            <label className="form-field">
-              <span>Observaciones</span>
-              <textarea
-                value={comment}
-                rows={3}
-                onChange={(event) => setComment(event.target.value)}
-                placeholder="Notas, ideas o recordatorios sobre esta jugada"
-              />
-            </label>
-
-            <div className="current-move-footer">
-              <span
-                className={`save-status save-status--${statusVariant}`}
-                role="status"
+            {parsed.error && (
+              <p
+                id="evaluation-error"
+                className="form-error"
+                role="alert"
               >
-                {statusLabel}
-              </span>
+                {parsed.error}
+              </p>
+            )}
+
+            <div className="evaluation-presets">
+              {EVAL_PRESETS.map((preset) => (
+                <button
+                  key={preset.label}
+                  type="button"
+                  className="evaluation-preset"
+                  onClick={() => applyEvaluation(preset.evaluation)}
+                  disabled={status === "saving"}
+                  title={`${preset.description} (${formatEvaluation(
+                    preset.evaluation,
+                  )})`}
+                  aria-label={`${preset.description}: ${formatEvaluation(
+                    preset.evaluation,
+                  )}`}
+                >
+                  {preset.label}
+                </button>
+              ))}
               <button
-                type="submit"
-                className="button button--small"
-                disabled={!isDirty || status === "saving"}
+                type="button"
+                className="button button--small button--ghost"
+                onClick={() => applyEvaluation(null)}
+                disabled={status === "saving"}
               >
-                Guardar
+                Borrar
               </button>
             </div>
-          </form>
-        )}
+          </div>
+
+          <div className="current-move-footer">
+            <span
+              className={`save-status save-status--${statusVariant}`}
+              role="status"
+            >
+              {statusLabel}
+            </span>
+            <button
+              type="submit"
+              className="button button--small"
+              disabled={
+                !isDirty || status === "saving" || parsed.error !== null
+              }
+            >
+              Guardar
+            </button>
+          </div>
+        </form>
 
         <div
           className={`classification-row ${

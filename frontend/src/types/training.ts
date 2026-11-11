@@ -1,4 +1,5 @@
 import type { ClassificationKey } from "./classifications";
+import type { Evaluation } from "./evaluation";
 
 export type TrainingMode = "full" | "weak";
 
@@ -14,6 +15,7 @@ export interface TrainingMoveInfo {
   name: string | null;
   comment: string | null;
   classification: ClassificationKey | null;
+  evaluation: Evaluation | null;
 }
 
 export interface TrainingLeadInMove extends TrainingMoveInfo {
@@ -30,6 +32,7 @@ export interface TrainingQuestionStep {
   kind: "question";
   node_id: number;
   fen: string;
+  evaluation: Evaluation | null;
   lead_in: TrainingLeadInMove[];
   correct_move: TrainingMoveInfo;
   phase: "traversal" | "review";
@@ -67,5 +70,6 @@ export interface TrainingAnswer {
   correct: boolean;
   correct_move_san: string | null;
   correct_move_uci: string | null;
+  correct_move: TrainingMoveInfo;
   next_step: TrainingStep;
 }

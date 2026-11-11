@@ -1,4 +1,5 @@
 import type { ClassificationKey } from "./classifications";
+import type { Evaluation } from "./evaluation";
 
 export interface TreeNode {
   id: number;
@@ -10,6 +11,7 @@ export interface TreeNode {
   name: string | null;
   comment: string | null;
   classification: ClassificationKey | null;
+  evaluation: Evaluation | null;
   children: TreeNode[];
 }
 
@@ -30,6 +32,7 @@ export interface NodeRead {
   name: string | null;
   comment: string | null;
   classification: ClassificationKey | null;
+  evaluation: Evaluation | null;
   transposition_of: TranspositionInfo | null;
 }
 
@@ -37,6 +40,7 @@ export interface NodeUpdatePayload {
   name?: string | null;
   comment?: string | null;
   classification?: ClassificationKey | null;
+  evaluation?: Evaluation | null;
 }
 
 export interface MovePayload {

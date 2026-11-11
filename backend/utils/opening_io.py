@@ -6,6 +6,8 @@ from sqlmodel import Session, select
 from models.classification import Classification
 from models.node import Node
 from models.opening import Opening
+from schemas.node_schema import Evaluation
+from utils.evaluation import evaluation_to_columns, parse_evaluation
 from utils.openings import INITIAL_FEN, count_nodes, opening_accuracy
 from utils.tree import IllegalMoveError, apply_move, build_tree, side_to_move
 
@@ -25,6 +27,7 @@ VALID_CLASSIFICATIONS = {classification.value for classification in Classificati
 class _ParsedImport:
     name: str
     color: str
+    evaluation: Optional[Evaluation]
     children: List[Dict[str, Any]]
 
 
@@ -42,6 +45,7 @@ def export_opening(session: Session, opening_id: int) -> Dict[str, Any]:
             "name": node["name"],
             "comment": node["comment"],
             "classification": node["classification"],
+            "evaluation": node["evaluation"],
             "children": [export_node(child) for child in node["children"]],
         }
 
@@ -51,7 +55,12 @@ def export_opening(session: Session, opening_id: int) -> Dict[str, Any]:
         "opening": {
             "name": opening.name,
             "color": opening.color,
-            "tree": {"children": [export_node(child) for child in tree["children"]]},
+            "tree": {
+                "evaluation": tree["evaluation"],
+                "children": [
+                    export_node(child) for child in tree["children"]
+                ],
+            },
         },
     }
 
@@ -96,10 +105,22 @@ def _parse_import(data: Any) -> _ParsedImport:
     if not isinstance(children_data, list):
         raise InvalidImportError("Los hijos deben ser una lista.")
 
+    try:
+        root_evaluation = parse_evaluation(tree_data.get("evaluation"))
+    except ValueError as exc:
+        raise InvalidImportError(
+            f"Evaluacion invalida en la posicion inicial: {exc}"
+        ) from exc
+
     parsed_children = _parse_children(
         INITIAL_FEN, 0, children_data, color, []
     )
-    return _ParsedImport(name=name, color=color, children=parsed_children)
+    return _ParsedImport(
+        name=name,
+        color=color,
+        evaluation=root_evaluation,
+        children=parsed_children,
+    )
 
 
 def _parse_children(
@@ -165,6 +186,14 @@ def _parse_children(
                 f"Clasificacion desconocida en {move_path}: {classification}"
             )
 
+        try:
+            evaluation = parse_evaluation(child_data.get("evaluation"))
+        except ValueError as exc:
+            move_path = _format_move_path(path + [san_raw])
+            raise InvalidImportError(
+                f"Evaluacion invalida en {move_path}: {exc}"
+            ) from exc
+
         child_children = child_data.get("children", [])
         if child_children is None:
             child_children = []
@@ -186,6 +215,7 @@ def _parse_children(
                 "name": name,
                 "comment": comment,
                 "classification": classification,
+                "evaluation": evaluation,
                 "children": _parse_children(
                     result.fen, result.ply, child_children, color, path + [result.san]
                 ),
@@ -207,6 +237,7 @@ def _insert_children(
     session: Session, opening_id: int, parent_id: int, children: List[Dict[str, Any]]
 ) -> None:
     for index, child in enumerate(children):
+        eval_cp, eval_mate = evaluation_to_columns(child["evaluation"])
         node = Node(
             opening_id=opening_id,
             parent_id=parent_id,
@@ -218,6 +249,8 @@ def _insert_children(
             name=child["name"],
             comment=child["comment"],
             classification=child["classification"],
+            eval_cp=eval_cp,
+            eval_mate=eval_mate,
         )
         session.add(node)
         session.flush()
@@ -248,6 +281,7 @@ def import_opening(session: Session, data: Any, on_conflict: str = "reject") -> 
         session.add(opening)
         session.flush()
 
+        root_eval_cp, root_eval_mate = evaluation_to_columns(parsed.evaluation)
         root = Node(
             opening_id=opening.id,
             parent_id=None,
@@ -256,6 +290,8 @@ def import_opening(session: Session, data: Any, on_conflict: str = "reject") -> 
             fen=INITIAL_FEN,
             ply=0,
             order_index=0,
+            eval_cp=root_eval_cp,
+            eval_mate=root_eval_mate,
         )
         session.add(root)
         session.flush()

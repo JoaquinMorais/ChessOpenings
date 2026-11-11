@@ -88,18 +88,18 @@ def test_linear_tree_and_finish():
     assert result["correct_move_san"] == "e4"
     assert step["node_id"] == 2
     assert step["lead_in"] == [
-        {"uci": "e2e4", "san": "e4", "name": None, "comment": None, "classification": None, "fast_forward": True},
-        {"uci": "e7e5", "san": "e5", "name": None, "comment": None, "classification": None, "fast_forward": False},
+        {"uci": "e2e4", "san": "e4", "name": None, "comment": None, "classification": None, "evaluation": None, "fast_forward": True},
+        {"uci": "e7e5", "san": "e5", "name": None, "comment": None, "classification": None, "evaluation": None, "fast_forward": False},
     ]
 
     result, state, step = answer(state, 2, "g1f3")
     assert result["correct"] is True
     assert step["node_id"] == 4
     assert step["lead_in"] == [
-        {"uci": "e2e4", "san": "e4", "name": None, "comment": None, "classification": None, "fast_forward": True},
-        {"uci": "e7e5", "san": "e5", "name": None, "comment": None, "classification": None, "fast_forward": True},
-        {"uci": "g1f3", "san": "Nf3", "name": None, "comment": None, "classification": None, "fast_forward": True},
-        {"uci": "b8c6", "san": "Nc6", "name": None, "comment": None, "classification": None, "fast_forward": False},
+        {"uci": "e2e4", "san": "e4", "name": None, "comment": None, "classification": None, "evaluation": None, "fast_forward": True},
+        {"uci": "e7e5", "san": "e5", "name": None, "comment": None, "classification": None, "evaluation": None, "fast_forward": True},
+        {"uci": "g1f3", "san": "Nf3", "name": None, "comment": None, "classification": None, "evaluation": None, "fast_forward": True},
+        {"uci": "b8c6", "san": "Nc6", "name": None, "comment": None, "classification": None, "evaluation": None, "fast_forward": False},
     ]
 
     result, state, step = answer(state, 4, "f1c4")
@@ -136,23 +136,23 @@ def test_nested_branches_do_not_jump_between_far_branches():
     _, state, step = answer(state, 1, "e7e5")
     assert step["node_id"] == 3
     assert step["lead_in"] == [
-        {"uci": "e2e4", "san": "e4", "name": None, "comment": None, "classification": None, "fast_forward": True},
-        {"uci": "e7e5", "san": "e5", "name": None, "comment": None, "classification": None, "fast_forward": True},
-        {"uci": "g1f3", "san": "Nf3", "name": None, "comment": None, "classification": None, "fast_forward": False},
+        {"uci": "e2e4", "san": "e4", "name": None, "comment": None, "classification": None, "evaluation": None, "fast_forward": True},
+        {"uci": "e7e5", "san": "e5", "name": None, "comment": None, "classification": None, "evaluation": None, "fast_forward": True},
+        {"uci": "g1f3", "san": "Nf3", "name": None, "comment": None, "classification": None, "evaluation": None, "fast_forward": False},
     ]
 
     _, state, step = answer(state, 3, "d7d6")
     assert step["node_id"] == 4
     assert step["lead_in"] == [
-        {"uci": "e2e4", "san": "e4", "name": None, "comment": None, "classification": None, "fast_forward": True},
-        {"uci": "e7e5", "san": "e5", "name": None, "comment": None, "classification": None, "fast_forward": True},
-        {"uci": "f1c4", "san": "Bc4", "name": None, "comment": None, "classification": None, "fast_forward": False},
+        {"uci": "e2e4", "san": "e4", "name": None, "comment": None, "classification": None, "evaluation": None, "fast_forward": True},
+        {"uci": "e7e5", "san": "e5", "name": None, "comment": None, "classification": None, "evaluation": None, "fast_forward": True},
+        {"uci": "f1c4", "san": "Bc4", "name": None, "comment": None, "classification": None, "evaluation": None, "fast_forward": False},
     ]
 
     _, state, step = answer(state, 4, "g8f6")
     assert step["node_id"] == 5
     assert step["lead_in"] == [
-        {"uci": "d2d4", "san": "d4", "name": None, "comment": None, "classification": None, "fast_forward": False},
+        {"uci": "d2d4", "san": "d4", "name": None, "comment": None, "classification": None, "evaluation": None, "fast_forward": False},
     ]
 
 
@@ -172,8 +172,8 @@ def test_wrong_answer_goes_to_review_with_rounds():
     assert step["phase"] == "review"
     assert step["node_id"] == 2
     assert step["lead_in"] == [
-        {"uci": "e2e4", "san": "e4", "name": None, "comment": None, "classification": None, "fast_forward": True},
-        {"uci": "e7e5", "san": "e5", "name": None, "comment": None, "classification": None, "fast_forward": True},
+        {"uci": "e2e4", "san": "e4", "name": None, "comment": None, "classification": None, "evaluation": None, "fast_forward": True},
+        {"uci": "e7e5", "san": "e5", "name": None, "comment": None, "classification": None, "evaluation": None, "fast_forward": True},
     ]
     assert state["pending"] == [2]
 
@@ -199,7 +199,7 @@ def test_black_opening_first_step_includes_rival_move():
     assert step["kind"] == "question"
     assert step["node_id"] == 1
     assert step["lead_in"] == [
-        {"uci": "e2e4", "san": "e4", "name": None, "comment": None, "classification": None, "fast_forward": False},
+        {"uci": "e2e4", "san": "e4", "name": None, "comment": None, "classification": None, "evaluation": None, "fast_forward": False},
     ]
     assert json.dumps(state)
 
@@ -236,6 +236,7 @@ def test_step_includes_move_metadata():
             "name": "Apertura rival",
             "comment": "Comentario del rival",
             "classification": "book",
+            "evaluation": None,
             "fast_forward": False,
         }
     ]
@@ -266,6 +267,7 @@ def test_question_filter_skips_disallowed_questions():
             "name": None,
             "comment": None,
             "classification": None,
+            "evaluation": None,
             "fast_forward": True,
         },
         {
@@ -274,6 +276,7 @@ def test_question_filter_skips_disallowed_questions():
             "name": None,
             "comment": None,
             "classification": None,
+            "evaluation": None,
             "fast_forward": False,
         },
     ]
@@ -299,6 +302,7 @@ def test_from_node_id_scopes_subtree():
             "name": None,
             "comment": None,
             "classification": None,
+            "evaluation": None,
             "fast_forward": True,
         },
         {
@@ -307,6 +311,7 @@ def test_from_node_id_scopes_subtree():
             "name": None,
             "comment": None,
             "classification": None,
+            "evaluation": None,
             "fast_forward": True,
         },
     ]

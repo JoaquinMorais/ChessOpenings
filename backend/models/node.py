@@ -1,11 +1,17 @@
 from typing import Optional
 
-from sqlalchemy import String, Text, UniqueConstraint
+from sqlalchemy import CheckConstraint, String, Text, UniqueConstraint
 from sqlmodel import Field, SQLModel
 
 
 class Node(SQLModel, table=True):
-    __table_args__ = (UniqueConstraint("parent_id", "move_uci", name="uq_node_parent_move"),)
+    __table_args__ = (
+        UniqueConstraint("parent_id", "move_uci", name="uq_node_parent_move"),
+        CheckConstraint(
+            "NOT (eval_cp IS NOT NULL AND eval_mate IS NOT NULL)",
+            name="ck_node_single_evaluation",
+        ),
+    )
 
     id: Optional[int] = Field(default=None, primary_key=True)
     opening_id: int = Field(foreign_key="opening.id", ondelete="CASCADE")
@@ -18,3 +24,13 @@ class Node(SQLModel, table=True):
     name: Optional[str] = Field(default=None, sa_type=String(80))
     comment: Optional[str] = Field(default=None, sa_type=Text)
     classification: Optional[str] = None
+    eval_cp: Optional[int] = None
+    eval_mate: Optional[int] = None
+
+    @property
+    def evaluation(self) -> Optional[dict[str, int]]:
+        if self.eval_cp is not None:
+            return {"cp": self.eval_cp}
+        if self.eval_mate is not None:
+            return {"mate": self.eval_mate}
+        return None

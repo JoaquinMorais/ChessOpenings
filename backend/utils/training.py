@@ -17,6 +17,7 @@ class TrainingNode:
     name: Optional[str] = None
     comment: Optional[str] = None
     classification: Optional[str] = None
+    evaluation: Optional[Dict[str, int]] = None
     children: List["TrainingNode"] = field(default_factory=list)
 
 
@@ -53,6 +54,7 @@ def _serialize_tree(node: TrainingNode, rng: random.Random) -> Dict[str, Any]:
         "name": node.name,
         "comment": node.comment,
         "classification": node.classification,
+        "evaluation": node.evaluation,
         "children": [_serialize_tree(child, rng) for child in ordered_children],
     }
 
@@ -125,6 +127,7 @@ def _lead_in(
                 "name": node.get("name"),
                 "comment": node.get("comment"),
                 "classification": node.get("classification"),
+                "evaluation": node.get("evaluation"),
                 "fast_forward": True if phase == "review" else current in seen_set,
             }
         )
@@ -145,6 +148,7 @@ def _question_step(
         "kind": "question",
         "node_id": node_id,
         "fen": node["fen"],
+        "evaluation": node.get("evaluation"),
         "lead_in": _lead_in(node_id, by_id, parent, state["seen"], phase),
         "correct_move": {
             "id": node["children"][0]["id"],
@@ -161,6 +165,19 @@ def _question_step(
             "pending": len(state["pending"]),
         },
     }
+
+
+def refresh_step(state: State, step: Step) -> Step:
+    if step.get("kind") != "question":
+        return step
+
+    by_id, parent, _ = _index_tree(state["tree"])
+    node_id = step.get("node_id")
+    if node_id not in by_id:
+        return step
+
+    phase = step.get("phase", "traversal")
+    return _question_step(state, node_id, by_id, parent, phase)
 
 
 def _finished_step(state: State) -> Step:
@@ -301,6 +318,14 @@ def answer(
         "hint_used": hint_used,
         "correct_move_san": correct_move["san"],
         "correct_move_uci": correct_move["uci"],
+        "correct_move": {
+            "uci": correct_move["uci"],
+            "san": correct_move["san"],
+            "name": correct_move.get("name"),
+            "comment": correct_move.get("comment"),
+            "classification": correct_move.get("classification"),
+            "evaluation": correct_move.get("evaluation"),
+        },
         "node_id": node_id,
     }
 

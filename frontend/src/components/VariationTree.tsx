@@ -1,7 +1,9 @@
 import { useMemo } from "react";
 
 import { getClassification } from "../types/classifications";
+import type { Evaluation } from "../types/evaluation";
 import type { TreeNode } from "../types/node";
+import { formatEvaluation } from "../utils/evaluation";
 import ClassificationBadge from "./ClassificationBadge";
 
 interface VariationTreeProps {
@@ -17,6 +19,33 @@ export function formatMoveLabel(node: TreeNode): string {
   const moveNumber = Math.ceil(node.ply / 2);
   const prefix = node.ply % 2 === 1 ? `${moveNumber}.` : `${moveNumber}...`;
   return `${prefix} ${node.san}`;
+}
+
+function hasEvaluation(evaluation: Evaluation | null): boolean {
+  if (!evaluation) {
+    return false;
+  }
+  return (
+    typeof evaluation.cp === "number" ||
+    (typeof evaluation.mate === "number" && evaluation.mate !== 0)
+  );
+}
+
+function evaluationTone(
+  evaluation: Evaluation,
+): "white" | "black" | "equal" {
+  if (typeof evaluation.mate === "number" && evaluation.mate !== 0) {
+    return evaluation.mate > 0 ? "white" : "black";
+  }
+  if (typeof evaluation.cp === "number") {
+    if (evaluation.cp > 0) {
+      return "white";
+    }
+    if (evaluation.cp < 0) {
+      return "black";
+    }
+  }
+  return "equal";
 }
 
 function collectMainLine(root: TreeNode): Set<number> {
@@ -49,6 +78,8 @@ function Branch({
   );
   const isCurrent = node.id === currentNodeId;
   const classification = getClassification(node.classification);
+  const showEvaluation =
+    node.evaluation !== null && hasEvaluation(node.evaluation);
 
   return (
     <div className={isRoot ? "variation-root" : "variation-node"}>
@@ -79,6 +110,15 @@ function Branch({
           classification={node.classification}
           size="sm"
         />
+        {showEvaluation && node.evaluation && (
+          <span
+            className={`variation-evaluation variation-evaluation--${evaluationTone(
+              node.evaluation,
+            )}`}
+          >
+            {formatEvaluation(node.evaluation)}
+          </span>
+        )}
         {node.name && (
           <span className="variation-name"> · {node.name}</span>
         )}

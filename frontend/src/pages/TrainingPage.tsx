@@ -12,6 +12,8 @@ import {
 import ChessBoardView from "../components/ChessBoardView";
 import type { BoardLastMove, BoardMove } from "../components/ChessBoardView";
 import ClassificationBadge from "../components/ClassificationBadge";
+import EvalBar from "../components/EvalBar";
+import type { Evaluation } from "../types/evaluation";
 import type { OpeningSummary } from "../types/opening";
 import type {
   TrainingMode,
@@ -24,14 +26,6 @@ import type {
 const INITIAL_FEN = new Chess().fen();
 const RIVAL_DELAY = 600;
 const CORRECT_DELAY = 700;
-
-function getBoardWidth(): number {
-  const stacked = window.innerWidth <= 860;
-  const reservedWidth = stacked ? 64 : 360 + 96;
-  const availableWidth = window.innerWidth - reservedWidth;
-  const availableHeight = window.innerHeight - 160;
-  return Math.max(280, Math.min(760, availableWidth, availableHeight));
-}
 
 const COLOR_LABELS = {
   white: "Blancas",
@@ -84,17 +78,46 @@ function lastMoveFromLeadIn(step: TrainingQuestionStep): BoardLastMove | null {
 }
 
 const SHOW_OBSERVATIONS_KEY = "chess-openings-show-observations";
+const SHOW_EVALUATION_KEY = "chess-openings-show-evaluation";
+const SHOW_CLASSIFICATIONS_KEY =
+  "chess-openings-show-classifications";
+
+function readBooleanSetting(key: string, fallback = true): boolean {
+  if (typeof window === "undefined") {
+    return fallback;
+  }
+  try {
+    const value = window.localStorage.getItem(key);
+    return value === null ? fallback : value !== "false";
+  } catch {
+    return fallback;
+  }
+}
+
+function writeBooleanSetting(key: string, value: boolean): void {
+  try {
+    window.localStorage.setItem(key, String(value));
+  } catch {
+    // La app sigue funcionando aunque localStorage no esté disponible.
+  }
+}
 
 interface MoveInfoCardProps {
   title: string;
   info: TrainingMoveInfo;
   showObservations: boolean;
+  showClassification: boolean;
 }
 
-function MoveInfoCard({ title, info, showObservations }: MoveInfoCardProps) {
+function MoveInfoCard({
+  title,
+  info,
+  showObservations,
+  showClassification,
+}: MoveInfoCardProps) {
   const hasContent =
     info.name !== null ||
-    info.classification !== null ||
+    (showClassification && info.classification !== null) ||
     (showObservations && info.comment !== null);
   if (!hasContent) {
     return null;
@@ -104,10 +127,12 @@ function MoveInfoCard({ title, info, showObservations }: MoveInfoCardProps) {
     <section className="panel move-info-card">
       <p className="card-label">{title}</p>
       <div className="move-info-header">
-        <ClassificationBadge
-          classification={info.classification}
-          size="md"
-        />
+        {showClassification && (
+          <ClassificationBadge
+            classification={info.classification}
+            size="md"
+          />
+        )}
         <strong>{info.name ?? info.san ?? "Jugada"}</strong>
       </div>
       {showObservations && info.comment && (
@@ -139,6 +164,12 @@ function TrainingPage() {
   );
   const [feedback, setFeedback] = useState<IncorrectFeedback | null>(null);
   const [lastMove, setLastMove] = useState<BoardLastMove | null>(null);
+  const [boardEvaluation, setBoardEvaluation] =
+    useState<Evaluation | null>(null);
+  const [boardBadge, setBoardBadge] = useState<{
+    square: string;
+    classification: string;
+  } | null>(null);
   const [rivalMoveInfo, setRivalMoveInfo] = useState<TrainingMoveInfo | null>(
     null,
   );
@@ -146,25 +177,37 @@ function TrainingPage() {
     useState<TrainingMoveInfo | null>(null);
   const [hintSquare, setHintSquare] = useState<string | null>(null);
   const [hintUsed, setHintUsed] = useState(false);
-  const [showObservations, setShowObservations] = useState(
-    () =>
-      typeof window === "undefined" ||
-      window.localStorage.getItem(SHOW_OBSERVATIONS_KEY) !== "false",
+  const [preparingPickup, setPreparingPickup] = useState(false);
+  const [showObservations, setShowObservations] = useState(() =>
+    readBooleanSetting(SHOW_OBSERVATIONS_KEY),
   );
-  const [boardWidth, setBoardWidth] = useState(getBoardWidth);
+  const [showEvaluation, setShowEvaluation] = useState(() =>
+    readBooleanSetting(SHOW_EVALUATION_KEY),
+  );
+  const [showClassifications, setShowClassifications] = useState(() =>
+    readBooleanSetting(SHOW_CLASSIFICATIONS_KEY),
+  );
   const animationTokenRef = useRef(0);
   const startedForRef = useRef<string | null>(null);
+  const openingColorRef = useRef<"white" | "black">("white");
 
   const handleToggleObservations = (checked: boolean) => {
     setShowObservations(checked);
-    window.localStorage.setItem(SHOW_OBSERVATIONS_KEY, String(checked));
+    writeBooleanSetting(SHOW_OBSERVATIONS_KEY, checked);
   };
 
-  useEffect(() => {
-    const handleResize = () => setBoardWidth(getBoardWidth());
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
+  const handleToggleEvaluation = (checked: boolean) => {
+    setShowEvaluation(checked);
+    writeBooleanSetting(SHOW_EVALUATION_KEY, checked);
+  };
+
+  const handleToggleClassifications = (checked: boolean) => {
+    setShowClassifications(checked);
+    writeBooleanSetting(SHOW_CLASSIFICATIONS_KEY, checked);
+  };
+
+  const canPickUp =
+    phase === "question" || (phase === "animating" && preparingPickup);
 
   const runStep = useCallback(
     async (nextStep: TrainingStep) => {
@@ -173,10 +216,13 @@ function TrainingPage() {
       setError(null);
       setFeedback(null);
       setLastMove(null);
+      setBoardEvaluation(null);
+      setBoardBadge(null);
       setRivalMoveInfo(null);
       setAnsweredMoveInfo(null);
       setHintSquare(null);
       setHintUsed(false);
+      setPreparingPickup(false);
       setStep(nextStep);
 
       if (nextStep.kind === "finished") {
@@ -190,8 +236,10 @@ function TrainingPage() {
       setPhase("animating");
       const game = new Chess();
       setBoardFen(game.fen());
+      const openingColor = openingColorRef.current;
+      const rivalIsWhite = openingColor === "black";
 
-      for (const move of nextStep.lead_in) {
+      for (const [index, move] of nextStep.lead_in.entries()) {
         if (animationTokenRef.current !== token) {
           return;
         }
@@ -208,6 +256,27 @@ function TrainingPage() {
 
         setBoardFen(game.fen());
         setLastMove(uciToLastMove(move.uci));
+        setBoardEvaluation(move.evaluation ?? null);
+
+        const moveIsWhite = index % 2 === 0;
+        const isRivalMove = moveIsWhite === rivalIsWhite;
+        if (
+          !move.fast_forward &&
+          isRivalMove &&
+          move.classification &&
+          move.uci
+        ) {
+          setBoardBadge({
+            square: move.uci.slice(2, 4),
+            classification: move.classification,
+          });
+        } else {
+          setBoardBadge(null);
+        }
+
+        if (index === nextStep.lead_in.length - 1) {
+          setPreparingPickup(true);
+        }
         if (!move.fast_forward) {
           await sleep(RIVAL_DELAY);
           if (animationTokenRef.current !== token) {
@@ -221,10 +290,26 @@ function TrainingPage() {
       }
 
       setBoardFen(nextStep.fen);
+      setBoardEvaluation(nextStep.evaluation ?? null);
       const lastLeadIn = nextStep.lead_in[nextStep.lead_in.length - 1];
+      const lastIndex = nextStep.lead_in.length - 1;
+      const lastMoveIsWhite = lastIndex % 2 === 0;
+      const lastMoveIsRival =
+        lastIndex >= 0 && lastMoveIsWhite === rivalIsWhite;
       if (lastLeadIn) {
         setRivalMoveInfo(lastLeadIn);
       }
+      setBoardBadge(
+        lastLeadIn &&
+          lastMoveIsRival &&
+          lastLeadIn.classification &&
+          lastLeadIn.uci
+          ? {
+              square: lastLeadIn.uci.slice(2, 4),
+              classification: lastLeadIn.classification,
+            }
+          : null,
+      );
       setPhase("question");
     },
     [openingId],
@@ -238,10 +323,13 @@ function TrainingPage() {
       setFeedback(null);
       setStep(null);
       setLastMove(null);
+      setBoardEvaluation(null);
+      setBoardBadge(null);
       setRivalMoveInfo(null);
       setAnsweredMoveInfo(null);
       setHintSquare(null);
       setHintUsed(false);
+      setPreparingPickup(false);
       setBoardFen(INITIAL_FEN);
 
       try {
@@ -289,6 +377,7 @@ function TrainingPage() {
           return;
         }
         setOpening(openingData);
+        openingColorRef.current = openingData.color;
 
         const key = trainingSessionKey(openingId);
         const stored = window.localStorage.getItem(key);
@@ -342,7 +431,19 @@ function TrainingPage() {
         move: uci,
         hint_used: usedHint,
       });
-      setAnsweredMoveInfo(question.correct_move);
+      setAnsweredMoveInfo(result.correct_move);
+      setBoardEvaluation(result.correct_move.evaluation ?? null);
+      const correctMoveSquare = result.correct
+        ? uciToLastMove(uci)?.to ?? null
+        : uciToLastMove(result.correct_move_uci)?.to ?? null;
+      setBoardBadge(
+        correctMoveSquare && result.correct_move.classification
+          ? {
+              square: correctMoveSquare,
+              classification: result.correct_move.classification,
+            }
+          : null,
+      );
 
       if (result.correct) {
         setPhase("correct");
@@ -375,6 +476,8 @@ function TrainingPage() {
     } catch (error) {
       setBoardFen(question.fen);
       setLastMove(lastMoveFromLeadIn(question));
+      setBoardEvaluation(question.evaluation ?? null);
+      setBoardBadge(null);
       setError(getErrorMessage(error));
       setPhase("question");
     }
@@ -409,9 +512,12 @@ function TrainingPage() {
 
     setBoardFen(game.fen());
     setLastMove(uciToLastMove(uci));
+    setBoardEvaluation(null);
+    setBoardBadge(null);
     setFeedback(null);
     setError(null);
     setHintSquare(null);
+    setPreparingPickup(false);
     setPhase("answering");
     void submitAnswer(sessionId, question, uci, hintUsed);
     return true;
@@ -588,15 +694,31 @@ function TrainingPage() {
     <section className="page training-page">
       <div className="training-layout">
         <div className="training-board">
-          <ChessBoardView
-            fen={boardFen}
-            orientation={orientation}
-            disabled={phase !== "question"}
-            lastMove={lastMove}
-            boardWidth={boardWidth}
-            hintSquare={hintSquare}
-            onMove={handleMove}
-          />
+          <div
+            className={`training-board-row ${
+              showEvaluation ? "" : "training-board-row--no-eval"
+            }`}
+          >
+            {showEvaluation && (
+              <div className="training-evalbar">
+                <EvalBar
+                  evaluation={boardEvaluation}
+                  orientation={orientation}
+                />
+              </div>
+            )}
+            <ChessBoardView
+              fen={boardFen}
+              orientation={orientation}
+              disabled={phase !== "question"}
+              pickupEnabled={canPickUp}
+              lastMove={lastMove}
+              badge={showClassifications ? boardBadge : null}
+              responsive
+              hintSquare={hintSquare}
+              onMove={handleMove}
+            />
+          </div>
         </div>
 
         <aside className="training-sidebar">
@@ -617,6 +739,29 @@ function TrainingPage() {
               />
               Mostrar observaciones
             </label>
+            <details className="training-options">
+              <summary>Opciones</summary>
+              <label className="checkbox-field">
+                <input
+                  type="checkbox"
+                  checked={showEvaluation}
+                  onChange={(event) =>
+                    handleToggleEvaluation(event.target.checked)
+                  }
+                />
+                Mostrar evaluación
+              </label>
+              <label className="checkbox-field">
+                <input
+                  type="checkbox"
+                  checked={showClassifications}
+                  onChange={(event) =>
+                    handleToggleClassifications(event.target.checked)
+                  }
+                />
+                Mostrar clasificaciones
+              </label>
+            </details>
           </section>
 
           {progress && (
@@ -681,6 +826,7 @@ function TrainingPage() {
               title="Jugada del rival"
               info={rivalMoveInfo}
               showObservations={showObservations}
+              showClassification={showClassifications}
             />
           )}
 
@@ -690,6 +836,7 @@ function TrainingPage() {
                 title="Jugada correcta"
                 info={answeredMoveInfo}
                 showObservations={showObservations}
+                showClassification={showClassifications}
               />
             )}
 

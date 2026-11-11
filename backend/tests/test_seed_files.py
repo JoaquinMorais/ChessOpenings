@@ -52,6 +52,8 @@ def _add_move(
     name: str | None = None,
     comment: str | None = None,
     classification: str | None = None,
+    eval_cp: int | None = None,
+    eval_mate: int | None = None,
 ) -> Node:
     result = apply_move(parent.fen, parent.ply, san)
     node = Node(
@@ -65,6 +67,8 @@ def _add_move(
         name=name,
         comment=comment,
         classification=classification,
+        eval_cp=eval_cp,
+        eval_mate=eval_mate,
     )
     session.add(node)
     session.commit()
@@ -115,6 +119,10 @@ def test_load_seed_import_creates_missing_openings(
     session: Session, tmp_path: Path
 ):
     opening, root = _create_opening(session, "External Seed")
+    root.eval_cp = 20
+    session.add(root)
+    session.commit()
+    session.refresh(root)
     _add_move(
         session,
         opening,
@@ -123,6 +131,7 @@ def test_load_seed_import_creates_missing_openings(
         name="Rama importada",
         comment="Comentario importado",
         classification="book",
+        eval_cp=35,
     )
     write_seed_file(session, opening, tmp_path)
     expected = json.loads(
@@ -138,6 +147,13 @@ def test_load_seed_import_creates_missing_openings(
         select(Opening).where(Opening.name == "External Seed")
     ).one()
     assert imported.color == "white"
+    imported_root = session.exec(
+        select(Node).where(
+            Node.opening_id == imported.id,
+            Node.parent_id.is_(None),
+        )
+    ).one()
+    assert imported_root.eval_cp == 20
     imported_node = session.exec(
         select(Node).where(
             Node.opening_id == imported.id,
@@ -147,6 +163,7 @@ def test_load_seed_import_creates_missing_openings(
     assert imported_node.name == "Rama importada"
     assert imported_node.comment == "Comentario importado"
     assert imported_node.classification == "book"
+    assert imported_node.eval_cp == 35
 
     from utils.opening_io import export_opening
 

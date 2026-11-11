@@ -7,7 +7,12 @@ from sqlmodel import Session, select
 from models.node import Node
 from models.opening import Opening
 from models.training import PositionStat, TrainingSession
-from utils.training import TrainingNode, answer as training_answer, start as training_start
+from utils.training import (
+    TrainingNode,
+    answer as training_answer,
+    refresh_step,
+    start as training_start,
+)
 from utils.tree import build_tree
 
 
@@ -34,6 +39,7 @@ def _to_training_node(data: Dict[str, Any]) -> TrainingNode:
         name=data.get("name"),
         comment=data.get("comment"),
         classification=data.get("classification"),
+        evaluation=data.get("evaluation"),
         children=[_to_training_node(child) for child in data["children"]],
     )
 
@@ -41,6 +47,53 @@ def _to_training_node(data: Dict[str, Any]) -> TrainingNode:
 def _build_training_tree(session: Session, opening_id: int) -> TrainingNode:
     nodes = session.exec(select(Node).where(Node.opening_id == opening_id)).all()
     return _to_training_node(build_tree(nodes))
+
+
+def _index_training_tree(tree: TrainingNode) -> dict[int, TrainingNode]:
+    by_id: dict[int, TrainingNode] = {}
+
+    def walk(node: TrainingNode) -> None:
+        by_id[node.id] = node
+        for child in node.children:
+            walk(child)
+
+    walk(tree)
+    return by_id
+
+
+def _merge_tree_metadata(
+    stored: Dict[str, Any],
+    current_by_id: dict[int, TrainingNode],
+) -> None:
+    current = current_by_id.get(stored["id"])
+    if current is not None:
+        stored["name"] = current.name
+        stored["comment"] = current.comment
+        stored["classification"] = current.classification
+        stored["evaluation"] = current.evaluation
+
+    for child in stored.get("children", []):
+        _merge_tree_metadata(child, current_by_id)
+
+
+def _hydrate_session_state(
+    session: Session,
+    training_session: TrainingSession,
+) -> Dict[str, Any]:
+    state = training_session.state or {}
+    tree = state.get("tree")
+    if not isinstance(tree, dict):
+        return state
+
+    current_tree = _build_training_tree(session, training_session.opening_id)
+    _merge_tree_metadata(tree, _index_training_tree(current_tree))
+
+    last_step = state.get("last_step")
+    if isinstance(last_step, dict):
+        state["last_step"] = refresh_step(state, last_step)
+
+    training_session.state = state
+    return state
 
 
 def _question_ids(tree: TrainingNode, color: str) -> set[int]:
@@ -161,6 +214,7 @@ def get_training_session(session: Session, session_id: int) -> TrainingSession:
     training_session = session.get(TrainingSession, session_id)
     if not training_session:
         raise TrainingNotFoundError("La sesion no existe.")
+    _hydrate_session_state(session, training_session)
     return training_session
 
 
@@ -177,9 +231,10 @@ def submit_training_answer(
     if training_session.finished_at is not None:
         raise TrainingConflictError("La sesion ya termino.")
 
+    state = _hydrate_session_state(session, training_session)
     try:
         result, new_state, step = training_answer(
-            training_session.state,
+            state,
             node_id,
             move_uci,
             hint_used=hint_used,

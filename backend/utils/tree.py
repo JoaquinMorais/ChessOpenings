@@ -81,6 +81,7 @@ def build_tree(nodes: Sequence[Node]) -> dict:
             "name": node.name,
             "comment": node.comment,
             "classification": node.classification,
+            "evaluation": node.evaluation,
             "children": [to_dict(child) for child in children],
         }
 

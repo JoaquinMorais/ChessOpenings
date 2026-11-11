@@ -12,6 +12,7 @@ from schemas.node_schema import (
     NodeUpdate,
     TranspositionInfo,
 )
+from utils.evaluation import evaluation_to_columns
 from utils.tree import (
     IllegalMoveError,
     apply_move,
@@ -123,13 +124,14 @@ def update_node(
     node = session.get(Node, node_id)
     if not node:
         raise HTTPException(status_code=404, detail="El nodo no existe.")
-    if node.parent_id is None:
+
+    fields = payload.model_fields_set
+    if node.parent_id is None and (not fields or fields - {"evaluation"}):
         raise HTTPException(
             status_code=409,
             detail="No se puede editar la raiz de la apertura.",
         )
 
-    fields = payload.model_fields_set
     if "name" in fields:
         name = _normalize_optional_text(payload.name)
         if name is not None and len(name) > 80:
@@ -154,6 +156,9 @@ def update_node(
                     status_code=422,
                     detail="La clasificacion no es valida.",
                 ) from exc
+
+    if "evaluation" in fields:
+        node.eval_cp, node.eval_mate = evaluation_to_columns(payload.evaluation)
 
     session.add(node)
     session.commit()

@@ -129,6 +129,18 @@ button {
   max-width: 42rem;
 }
 
+.page-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.6rem;
+}
+
+.page-title-row h2 {
+  margin-bottom: 0;
+}
+
 .eyebrow {
   margin-bottom: 0.5rem;
   color: #58705f;
@@ -290,6 +302,49 @@ button {
 
 .button--danger:hover {
   background: #b33d35;
+}
+
+.favorite-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.7rem;
+  height: 1.7rem;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #8a9a8d;
+  font: inherit;
+  font-size: 1.15rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.favorite-button:hover:not(:disabled) {
+  background: rgba(197, 154, 43, 0.12);
+  color: #a77c14;
+}
+
+.favorite-button:focus-visible {
+  outline: 2px solid rgba(31, 61, 43, 0.35);
+  outline-offset: 1px;
+}
+
+.favorite-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.favorite-button--active {
+  color: #c59a2b;
+}
+
+.favorite-button--large {
+  width: 2.3rem;
+  height: 2.3rem;
+  font-size: 1.65rem;
 }
 
 .panel,
@@ -643,6 +698,30 @@ button {
 .opening-summary h3 {
   margin-bottom: 0.2rem;
   font-size: 1.08rem;
+}
+
+.opening-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.2rem;
+}
+
+.opening-title-row h3 {
+  margin-bottom: 0;
+}
+
+.opening-list-separator {
+  list-style: none;
+  height: 1px;
+  margin: 0 1rem;
+  background: linear-gradient(
+    to right,
+    transparent,
+    rgba(22, 33, 27, 0.18),
+    transparent
+  );
 }
 
 .opening-meta {

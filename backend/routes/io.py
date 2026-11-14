@@ -74,6 +74,7 @@ def import_opening_endpoint(
         accuracy=opening_accuracy(session, opening.id),
         in_seed=visibility is not None,
         seed_visibility=visibility,
+        is_favorite=opening.is_favorite,
     )
 
 
@@ -191,6 +192,7 @@ def restore_seed_file(
         accuracy=opening_accuracy(session, opening.id),
         in_seed=True,
         seed_visibility=visibility,
+        is_favorite=opening.is_favorite,
     )
 
 
@@ -274,6 +276,7 @@ async def import_pgn_endpoint(
         accuracy=opening_accuracy(session, opening.id),
         in_seed=visibility is not None,
         seed_visibility=visibility,
+        is_favorite=opening.is_favorite,
     )
 
 

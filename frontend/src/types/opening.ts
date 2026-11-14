@@ -21,6 +21,7 @@ export interface OpeningSummary {
   accuracy: number | null;
   in_seed: boolean;
   seed_visibility: SeedVisibility | null;
+  is_favorite: boolean;
 }
 
 export interface OpeningCreatePayload {

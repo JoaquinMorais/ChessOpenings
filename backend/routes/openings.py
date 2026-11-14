@@ -1,12 +1,19 @@
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlmodel import Session, select
+from sqlalchemy import func
+from sqlmodel import Session, col, select
 
 from config.database import get_session
 from models.opening import Opening
-from schemas.opening_schema import OpeningCreate, OpeningRead, OpeningUpdate
+from schemas.opening_schema import (
+    FavoriteUpdate,
+    OpeningCreate,
+    OpeningRead,
+    OpeningUpdate,
+)
 from utils.openings import count_nodes, create_root_node, opening_accuracy
+from utils.preferences import rename_favorite, set_favorite
 from utils.seed_files import delete_seed_file, seed_visibility
 
 router = APIRouter(prefix="/openings", tags=["openings"])
@@ -22,12 +29,20 @@ def _to_read(session: Session, opening: Opening) -> OpeningRead:
         accuracy=opening_accuracy(session, opening.id),
         in_seed=visibility is not None,
         seed_visibility=visibility,
+        is_favorite=opening.is_favorite,
     )
 
 
 @router.get("", response_model=list[OpeningRead])
 def list_openings(session: Session = Depends(get_session)):
-    openings = session.exec(select(Opening)).all()
+    openings = session.exec(
+        select(Opening).order_by(
+            col(Opening.is_favorite).desc(),
+            func.lower(Opening.name),
+            Opening.name,
+            Opening.id,
+        )
+    ).all()
     return [_to_read(session, o) for o in openings]
 
 
@@ -57,7 +72,8 @@ def update_opening(opening_id: int, payload: OpeningUpdate, session: Session = D
     opening = session.get(Opening, opening_id)
     if not opening:
         raise HTTPException(status_code=404, detail="La apertura no existe.")
-    if payload.name != opening.name:
+    old_name = opening.name
+    if payload.name != old_name:
         existing = session.exec(select(Opening).where(Opening.name == payload.name)).first()
         if existing:
             raise HTTPException(status_code=409, detail="Ya existe una apertura con ese nombre.")
@@ -67,6 +83,21 @@ def update_opening(opening_id: int, payload: OpeningUpdate, session: Session = D
     session.add(opening)
     session.commit()
     session.refresh(opening)
+    if payload.name != old_name:
+        rename_favorite(old_name, opening.name)
+    return _to_read(session, opening)
+
+
+@router.post("/{opening_id}/favorite", response_model=OpeningRead)
+def update_opening_favorite(
+    opening_id: int,
+    payload: FavoriteUpdate,
+    session: Session = Depends(get_session),
+):
+    opening = session.get(Opening, opening_id)
+    if not opening:
+        raise HTTPException(status_code=404, detail="La apertura no existe.")
+    set_favorite(session, opening, payload.value)
     return _to_read(session, opening)
 
 

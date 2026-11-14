@@ -77,6 +77,16 @@ export function deleteOpeningSeed(openingId: number): Promise<void> {
   });
 }
 
+export function setOpeningFavorite(
+  openingId: number,
+  value: boolean,
+): Promise<OpeningSummary> {
+  return apiFetch<OpeningSummary>(`/openings/${openingId}/favorite`, {
+    method: "POST",
+    body: JSON.stringify({ value }),
+  });
+}
+
 export function listSeedFiles(): Promise<SeedFileInfo[]> {
   return apiFetch<SeedFileInfo[]>("/seed/files");
 }

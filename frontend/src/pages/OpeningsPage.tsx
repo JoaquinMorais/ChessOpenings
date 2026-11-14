@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import type { ChangeEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
@@ -14,8 +14,10 @@ import {
   listOpenings,
   renameOpening,
   saveOpeningSeed,
+  setOpeningFavorite,
 } from "../api/openings";
 import DeleteSeedDialog from "../components/DeleteSeedDialog";
+import FavoriteButton from "../components/FavoriteButton";
 import ImportConflictDialog from "../components/ImportConflictDialog";
 import ImportPgnDialog from "../components/ImportPgnDialog";
 import OpeningForm from "../components/OpeningForm";
@@ -77,6 +79,7 @@ function OpeningsPage() {
   const [pgnImporting, setPgnImporting] = useState(false);
   const [pgnError, setPgnError] = useState<string | null>(null);
   const [seedingId, setSeedingId] = useState<number | null>(null);
+  const [favoriteBusyId, setFavoriteBusyId] = useState<number | null>(null);
   const [pendingSeedSave, setPendingSeedSave] =
     useState<OpeningSummary | null>(null);
   const [seedSaveError, setSeedSaveError] = useState<string | null>(null);
@@ -273,6 +276,34 @@ function OpeningsPage() {
     }
   };
 
+  const handleToggleFavorite = async (opening: OpeningSummary) => {
+    setFavoriteBusyId(opening.id);
+    setActionError(null);
+    try {
+      const updated = await setOpeningFavorite(
+        opening.id,
+        !opening.is_favorite,
+      );
+      setList((current) => {
+        if (current.status !== "ok") {
+          return current;
+        }
+        return {
+          status: "ok",
+          openings: current.openings.map((item) =>
+            item.id === updated.id ? updated : item,
+          ),
+        };
+      });
+      const openings = await listOpenings();
+      setList({ status: "ok", openings });
+    } catch (error) {
+      setActionError(getErrorMessage(error));
+    } finally {
+      setFavoriteBusyId(null);
+    }
+  };
+
   const openSeedRemoveDialog = (opening: OpeningSummary) => {
     setPendingSeedRemove(opening);
     setRemoveSeedError(null);
@@ -439,6 +470,11 @@ function OpeningsPage() {
     setConflictError(null);
   };
 
+  const firstNonFavoriteIndex =
+    list.status === "ok"
+      ? list.openings.findIndex((opening) => !opening.is_favorite)
+      : -1;
+
   return (
     <section className="page">
       <div className="page-toolbar">
@@ -578,36 +614,53 @@ function OpeningsPage() {
 
       {list.status === "ok" && list.openings.length > 0 && (
         <ul className="opening-list">
-          {list.openings.map((opening) => (
-            <li key={opening.id} className="opening-card">
-              <div className="opening-summary">
-                <span
-                  className={`color-icon color-icon--${opening.color}`}
-                  role="img"
-                  aria-label={COLOR_LABELS[opening.color]}
-                />
-                <div>
-                  <h3>
-                    {opening.name}
-                    {opening.seed_visibility && (
-                      <span
-                        className={`seed-badge seed-badge--${opening.seed_visibility}`}
-                      >
-                        {opening.seed_visibility === "public"
-                          ? "Publica"
-                          : "Privada"}
+          {list.openings.map((opening, index) => (
+            <Fragment key={opening.id}>
+              {index === firstNonFavoriteIndex &&
+                firstNonFavoriteIndex > 0 && (
+                  <li
+                    className="opening-list-separator"
+                    aria-hidden="true"
+                  />
+                )}
+              <li className="opening-card">
+                <div className="opening-summary">
+                  <span
+                    className={`color-icon color-icon--${opening.color}`}
+                    role="img"
+                    aria-label={COLOR_LABELS[opening.color]}
+                  />
+                  <div>
+                    <div className="opening-title-row">
+                      <h3>
+                        {opening.name}
+                        {opening.seed_visibility && (
+                          <span
+                            className={`seed-badge seed-badge--${opening.seed_visibility}`}
+                          >
+                            {opening.seed_visibility === "public"
+                              ? "Publica"
+                              : "Privada"}
+                          </span>
+                        )}
+                      </h3>
+                      <FavoriteButton
+                        isFavorite={opening.is_favorite}
+                        busy={favoriteBusyId === opening.id}
+                        onToggle={() => void handleToggleFavorite(opening)}
+                      />
+                    </div>
+                    <p className="opening-meta">
+                      <span>{COLOR_LABELS[opening.color]}</span>
+                      <span>{formatMoves(opening.node_count)} jugadas</span>
+                      <span>
+                        Acierto: {formatAccuracy(opening.accuracy)}
                       </span>
-                    )}
-                  </h3>
-                  <p className="opening-meta">
-                    <span>{COLOR_LABELS[opening.color]}</span>
-                    <span>{formatMoves(opening.node_count)} jugadas</span>
-                    <span>Acierto: {formatAccuracy(opening.accuracy)}</span>
-                  </p>
+                    </p>
+                  </div>
                 </div>
-              </div>
 
-              <div className="opening-actions">
+                <div className="opening-actions">
                 <Link
                   className="button button--small"
                   to={`/openings/${opening.id}/edit`}
@@ -689,8 +742,9 @@ function OpeningsPage() {
                 >
                   {deletingId === opening.id ? "Eliminando..." : "Eliminar"}
                 </button>
-              </div>
-            </li>
+                </div>
+              </li>
+            </Fragment>
           ))}
         </ul>
       )}

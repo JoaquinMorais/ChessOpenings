@@ -20,6 +20,11 @@ class OpeningRead(BaseModel):
     accuracy: Optional[float] = None
     in_seed: bool = False
     seed_visibility: Optional[Literal["public", "private"]] = None
+    is_favorite: bool = False
+
+
+class FavoriteUpdate(BaseModel):
+    value: bool
 
 
 class SeedSaveRequest(BaseModel):

@@ -4,12 +4,13 @@ import { Chess } from "chess.js";
 
 import { ApiError } from "../api/client";
 import { addMove, deleteNode, getTree, makeMain } from "../api/nodes";
-import { getOpening } from "../api/openings";
+import { getOpening, setOpeningFavorite } from "../api/openings";
 import ChessBoardView from "../components/ChessBoardView";
 import type { BoardLastMove, BoardMove } from "../components/ChessBoardView";
 import CurrentMovePanel from "../components/CurrentMovePanel";
 import type { CurrentMovePanelHandle } from "../components/CurrentMovePanel";
 import EvalBar from "../components/EvalBar";
+import FavoriteButton from "../components/FavoriteButton";
 import VariationTree, {
   formatMoveLabel,
 } from "../components/VariationTree";
@@ -138,6 +139,7 @@ function OpeningEditorPage() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [branchBusy, setBranchBusy] = useState(false);
+  const [favoriteBusy, setFavoriteBusy] = useState(false);
   const [boardFlipped, setBoardFlipped] = useState(false);
   const [branchNotice, setBranchNotice] = useState<string | null>(null);
   const [transpositionNotice, setTranspositionNotice] = useState<{
@@ -445,6 +447,26 @@ function OpeningEditorPage() {
     goStart,
   ]);
 
+  const handleToggleFavorite = async () => {
+    if (!opening) {
+      return;
+    }
+
+    setFavoriteBusy(true);
+    setActionError(null);
+    try {
+      const updated = await setOpeningFavorite(
+        opening.id,
+        !opening.is_favorite,
+      );
+      setOpening(updated);
+    } catch (error) {
+      setActionError(getErrorMessage(error));
+    } finally {
+      setFavoriteBusy(false);
+    }
+  };
+
   const handleMakeMain = async () => {
     if (
       !currentNode ||
@@ -561,7 +583,15 @@ function OpeningEditorPage() {
       <div className="page-toolbar">
         <div className="page-heading">
           <p className="eyebrow">Editor</p>
-          <h2>{opening.name}</h2>
+          <div className="page-title-row">
+            <h2>{opening.name}</h2>
+            <FavoriteButton
+              isFavorite={opening.is_favorite}
+              busy={favoriteBusy}
+              onToggle={() => void handleToggleFavorite()}
+              className="favorite-button--large"
+            />
+          </div>
           <p>
             {COLOR_LABELS[opening.color]} · Jugada {currentNode.ply}
           </p>

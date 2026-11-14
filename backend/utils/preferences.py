@@ -8,6 +8,11 @@ from typing import Iterable
 from sqlmodel import Session, select
 
 from models.opening import Opening
+from utils.data_permissions import (
+    apply_directory_permissions,
+    apply_local_permissions,
+    owner_of,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +69,8 @@ def write_favorites(
 ) -> None:
     target = _resolve_path(path)
     target.parent.mkdir(parents=True, exist_ok=True)
+    owner = owner_of(target.parent.parent)
+    apply_directory_permissions(target.parent, owner)
     content = json.dumps(_unique(names), ensure_ascii=False, indent=2) + "\n"
 
     file_descriptor, temporary_name = tempfile.mkstemp(
@@ -77,6 +84,7 @@ def write_favorites(
             temporary_file.flush()
             os.fsync(temporary_file.fileno())
         os.replace(temporary_name, target)
+        apply_local_permissions(target, owner)
     except Exception:
         try:
             os.unlink(temporary_name)

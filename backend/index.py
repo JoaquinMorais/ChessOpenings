@@ -13,6 +13,7 @@ from routes.nodes import router as nodes_router
 from routes.openings import router as openings_router
 from routes.stats import router as stats_router
 from routes.training import router as training_router
+from utils.data_permissions import normalize_data_permissions
 from utils.preferences import apply_favorites
 from utils.seed import load_seed
 
@@ -25,6 +26,7 @@ import models.training  # noqa: F401
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     run_migrations()
+    normalize_data_permissions()
     with Session(engine) as session:
         load_seed(session)
         apply_favorites(session)

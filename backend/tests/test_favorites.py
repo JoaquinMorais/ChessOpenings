@@ -100,6 +100,7 @@ def test_toggle_favorite_persists_file(
     assert json.loads(favorites_path.read_text(encoding="utf-8")) == [
         "Favorite A"
     ]
+    assert favorites_path.stat().st_mode & 0o777 == 0o600
     assert {path.name for path in favorites_path.parent.iterdir()} == {
         "favorites.json"
     }

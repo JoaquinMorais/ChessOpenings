@@ -12,6 +12,12 @@ from sqlmodel import Session, select
 
 from models.opening import Opening
 from models.seed_import import SeedImport
+from utils.data_permissions import (
+    apply_directory_permissions,
+    apply_permissions,
+    apply_seed_permissions,
+    owner_of,
+)
 from utils.opening_io import export_opening
 
 Visibility = Literal["public", "private"]
@@ -136,9 +142,13 @@ def iter_seed_files(
 def ensure_private_gitignore(root: Path | None = None) -> Path:
     private_dir = _visibility_directory("private", root)
     private_dir.mkdir(parents=True, exist_ok=True)
+    seed_root = _resolve_root(root)
+    owner = owner_of(seed_root)
+    apply_directory_permissions(private_dir, owner)
     gitignore = private_dir / ".gitignore"
     if not gitignore.exists():
         gitignore.write_text(PRIVATE_GITIGNORE, encoding="utf-8")
+    apply_permissions(gitignore, 0o644, owner)
     return gitignore
 
 
@@ -154,6 +164,8 @@ def write_seed_file(
     seed_root = _resolve_root(root)
     target_directory = _visibility_directory(visibility, seed_root)
     target_directory.mkdir(parents=True, exist_ok=True)
+    owner = owner_of(seed_root)
+    apply_directory_permissions(target_directory, owner)
     if visibility == "private":
         ensure_private_gitignore(seed_root)
 
@@ -177,6 +189,7 @@ def write_seed_file(
             temporary_file.flush()
             os.fsync(temporary_file.fileno())
         os.replace(temporary_name, path)
+        apply_seed_permissions(path, visibility, owner)
     except Exception:
         try:
             os.unlink(temporary_name)

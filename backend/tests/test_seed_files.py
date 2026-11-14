@@ -66,6 +66,7 @@ def test_write_move_delete_seed_file(session: Session, seed_dir: Path):
 
     assert path.parent == seed_dir / "public"
     assert path.is_file()
+    assert path.stat().st_mode & 0o777 == 0o644
     assert seed_visibility(opening.name, seed_dir) == "public"
     assert seed_file_exists(opening.name, seed_dir)
     assert list(seed_dir.glob("**/*.tmp")) == []
@@ -78,6 +79,8 @@ def test_write_move_delete_seed_file(session: Session, seed_dir: Path):
     private_path = write_seed_file(session, opening, "private", seed_dir)
     assert not path.exists()
     assert private_path.parent == seed_dir / "private"
+    assert private_path.stat().st_mode & 0o777 == 0o600
+    assert (seed_dir / "private" / ".gitignore").stat().st_mode & 0o777 == 0o644
     assert seed_visibility(opening.name, seed_dir) == "private"
     row = session.exec(
         select(SeedImport).where(SeedImport.name == opening.name)

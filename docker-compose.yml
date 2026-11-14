@@ -20,6 +20,7 @@ services:
         condition: service_healthy
     volumes:
       - ./backend/data:/app/data
+      - ./.gitignore:/repo-root/.gitignore:ro
     ports:
       - "8000:8000"
   frontend:
@@ -37,6 +38,7 @@ services:
         condition: service_healthy
     volumes:
       - ./backend:/app
+      - ./.gitignore:/repo-root/.gitignore:ro
     command: pytest
     profiles:
       - test

@@ -12,6 +12,7 @@ SEED_PATH = (
     Path(__file__).resolve().parents[1]
     / "data"
     / "seed_import"
+    / "public"
     / "ruy-lopez-espanola.json"
 )
 OPENING_NAME = "Ruy Lopez (Apertura Espanola)"

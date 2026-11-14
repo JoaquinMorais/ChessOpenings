@@ -7,3 +7,6 @@ pgdata/
 node_modules/
 dist/
 .venv/
+backend/data/seed_import/private/*
+!backend/data/seed_import/private/.gitkeep
+backend/data/local/

@@ -1,23 +1,27 @@
-from fastapi import APIRouter, Depends, HTTPException
+from typing import Literal
+
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel import Session, select
 
 from config.database import get_session
 from models.opening import Opening
 from schemas.opening_schema import OpeningCreate, OpeningRead, OpeningUpdate
 from utils.openings import count_nodes, create_root_node, opening_accuracy
-from utils.seed_files import seed_file_exists
+from utils.seed_files import delete_seed_file, seed_visibility
 
 router = APIRouter(prefix="/openings", tags=["openings"])
 
 
 def _to_read(session: Session, opening: Opening) -> OpeningRead:
+    visibility = seed_visibility(opening.name)
     return OpeningRead(
         id=opening.id,
         name=opening.name,
         color=opening.color,
         node_count=count_nodes(session, opening.id),
         accuracy=opening_accuracy(session, opening.id),
-        in_seed=seed_file_exists(opening.name),
+        in_seed=visibility is not None,
+        seed_visibility=visibility,
     )
 
 
@@ -67,10 +71,29 @@ def update_opening(opening_id: int, payload: OpeningUpdate, session: Session = D
 
 
 @router.delete("/{opening_id}", status_code=204)
-def delete_opening(opening_id: int, session: Session = Depends(get_session)):
+def delete_opening(
+    opening_id: int,
+    scope: Literal["local", "seed", "both"] | None = Query(default=None),
+    session: Session = Depends(get_session),
+):
     opening = session.get(Opening, opening_id)
     if not opening:
         raise HTTPException(status_code=404, detail="La apertura no existe.")
-    session.delete(opening)
-    session.commit()
+
+    has_seed_file = seed_visibility(opening.name) is not None
+    if has_seed_file and scope is None:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "Indicá el alcance del borrado: local, seed o both."
+            ),
+        )
+
+    if has_seed_file and scope in ("seed", "both"):
+        delete_seed_file(session, opening.name)
+
+    if not has_seed_file or scope in ("local", "both"):
+        session.delete(opening)
+        session.commit()
+
     return None

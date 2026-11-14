@@ -7,6 +7,7 @@ from config.database import engine
 
 import models.node  # noqa: F401
 import models.opening  # noqa: F401
+import models.seed_import  # noqa: F401
 import models.training  # noqa: F401
 
 config = context.config

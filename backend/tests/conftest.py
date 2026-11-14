@@ -46,6 +46,7 @@ from index import app
 
 import models.node  # noqa: F401
 import models.opening  # noqa: F401
+import models.seed_import  # noqa: F401
 import models.training  # noqa: F401
 
 if not test_database.endswith("_test"):

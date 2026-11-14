@@ -16,6 +16,7 @@ from utils.seed import load_seed
 
 import models.node  # noqa: F401
 import models.opening  # noqa: F401
+import models.seed_import  # noqa: F401
 import models.training  # noqa: F401
 
 

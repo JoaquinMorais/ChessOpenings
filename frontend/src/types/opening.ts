@@ -9,6 +9,7 @@ export interface OpeningSummary {
   node_count: number;
   accuracy: number | null;
   in_seed: boolean;
+  seed_visibility: "public" | "private" | null;
 }
 
 export interface OpeningCreatePayload {

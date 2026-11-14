@@ -163,10 +163,14 @@ function OpeningsPage() {
     }
 
     try {
-      if (deleteSeed) {
-        await deleteOpeningSeed(opening.id);
+      if (opening.in_seed) {
+        await deleteOpening(
+          opening.id,
+          deleteSeed ? "both" : "local",
+        );
+      } else {
+        await deleteOpening(opening.id);
       }
-      await deleteOpening(opening.id);
       return true;
     } catch (error) {
       const message = getErrorMessage(error);
@@ -225,7 +229,10 @@ function OpeningsPage() {
     setIoError(null);
     setIoSuccess(null);
     try {
-      const result = await saveOpeningSeed(opening.id);
+      const result = await saveOpeningSeed(
+        opening.id,
+        opening.seed_visibility ?? "public",
+      );
       setIoSuccess(`Guardado en ${result.path}.`);
       await loadOpenings();
     } catch (error) {
@@ -236,11 +243,20 @@ function OpeningsPage() {
   };
 
   const handleRemoveSeed = async (opening: OpeningSummary) => {
-    const confirmed = window.confirm(
-      `¿Quitar "${opening.name}" del seed? El archivo guardado se eliminará.`,
-    );
-    if (!confirmed) {
-      return;
+    if (opening.seed_visibility === "private") {
+      const typed = window.prompt(
+        `Escribí "${opening.name}" para confirmar el borrado irreversible del archivo private.`,
+      );
+      if (typed !== opening.name) {
+        return;
+      }
+    } else {
+      const confirmed = window.confirm(
+        `¿Quitar "${opening.name}" del seed? El archivo guardado se eliminará.`,
+      );
+      if (!confirmed) {
+        return;
+      }
     }
 
     setRemovingSeedId(opening.id);
@@ -642,6 +658,7 @@ function OpeningsPage() {
       {pendingSeedDelete && (
         <DeleteSeedDialog
           openingName={pendingSeedDelete.name}
+          seedVisibility={pendingSeedDelete.seed_visibility}
           busy={deletingId === pendingSeedDelete.id}
           error={deleteSeedError}
           onDeleteOnly={() => void handleSeedDelete(false)}

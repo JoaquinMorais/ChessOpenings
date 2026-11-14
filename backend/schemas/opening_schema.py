@@ -19,6 +19,23 @@ class OpeningRead(BaseModel):
     node_count: int
     accuracy: Optional[float] = None
     in_seed: bool = False
+    seed_visibility: Optional[Literal["public", "private"]] = None
+
+
+class SeedSaveRequest(BaseModel):
+    visibility: Literal["public", "private"]
+
+
+class SeedRestoreRequest(BaseModel):
+    file_key: str
+
+
+class SeedFileInfo(BaseModel):
+    file_key: str
+    name: str
+    visibility: Literal["public", "private"]
+    state: Literal["in_db", "deleted_locally", "new"]
+
 
 class SeedFileRead(BaseModel):
     path: str

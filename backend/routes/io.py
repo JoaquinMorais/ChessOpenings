@@ -1,12 +1,20 @@
 import json
+import logging
 from typing import Any, Dict, Literal
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, Response
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from config.database import get_session
 from models.opening import Opening
-from schemas.opening_schema import OpeningRead, SeedFileRead
+from models.seed_import import SeedImport
+from schemas.opening_schema import (
+    OpeningRead,
+    SeedFileInfo,
+    SeedFileRead,
+    SeedRestoreRequest,
+    SeedSaveRequest,
+)
 from utils.openings import count_nodes, opening_accuracy
 from utils.opening_pgn import PgnImportError, export_opening_pgn, pgn_to_import_data
 from utils.opening_io import (
@@ -15,9 +23,17 @@ from utils.opening_io import (
     export_opening,
     import_opening,
 )
-from utils.seed_files import delete_seed_file, seed_file_exists, write_seed_file
+from utils.seed_files import (
+    delete_seed_file,
+    iter_seed_files,
+    opening_name_from_file,
+    resolve_seed_file_key,
+    seed_visibility,
+    write_seed_file,
+)
 
 router = APIRouter(tags=["io"])
+logger = logging.getLogger(__name__)
 
 
 @router.get("/openings/{opening_id}/export")
@@ -49,24 +65,34 @@ def import_opening_endpoint(
     except InvalidImportError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
 
+    visibility = seed_visibility(opening.name)
     return OpeningRead(
         id=opening.id,
         name=opening.name,
         color=opening.color,
         node_count=count_nodes(session, opening.id),
         accuracy=opening_accuracy(session, opening.id),
+        in_seed=visibility is not None,
+        seed_visibility=visibility,
     )
+
 
 @router.post(
     "/openings/{opening_id}/seed",
     response_model=SeedFileRead,
 )
-def save_opening_seed(opening_id: int, session: Session = Depends(get_session)):
+def save_opening_seed(
+    opening_id: int,
+    payload: SeedSaveRequest,
+    session: Session = Depends(get_session),
+):
     opening = session.get(Opening, opening_id)
     if not opening:
         raise HTTPException(status_code=404, detail="La apertura no existe.")
-    path = write_seed_file(session, opening)
-    return SeedFileRead(path=f"data/seed_import/{path.name}")
+    path = write_seed_file(session, opening, payload.visibility)
+    return SeedFileRead(
+        path=f"data/seed_import/{payload.visibility}/{path.name}"
+    )
 
 
 @router.delete("/openings/{opening_id}/seed", status_code=204)
@@ -74,8 +100,98 @@ def remove_opening_seed(opening_id: int, session: Session = Depends(get_session)
     opening = session.get(Opening, opening_id)
     if not opening:
         raise HTTPException(status_code=404, detail="La apertura no existe.")
-    delete_seed_file(opening.name)
+    delete_seed_file(session, opening.name)
     return None
+
+
+@router.get("/seed/files", response_model=list[SeedFileInfo])
+def list_seed_files(session: Session = Depends(get_session)):
+    files: list[SeedFileInfo] = []
+    for path, key, visibility in iter_seed_files():
+        name = opening_name_from_file(path)
+        if name is None:
+            logger.warning("Seed file %s has no valid opening name; skipping.", path)
+            continue
+
+        opening = session.exec(
+            select(Opening).where(Opening.name == name)
+        ).first()
+        if opening is not None:
+            state = "in_db"
+        elif session.exec(
+            select(SeedImport).where(SeedImport.file_key == key)
+        ).first() is not None:
+            state = "deleted_locally"
+        else:
+            state = "new"
+
+        files.append(
+            SeedFileInfo(
+                file_key=key,
+                name=name,
+                visibility=visibility,
+                state=state,
+            )
+        )
+    return files
+
+
+@router.post("/seed/restore", response_model=OpeningRead, status_code=201)
+def restore_seed_file(
+    payload: SeedRestoreRequest,
+    session: Session = Depends(get_session),
+):
+    try:
+        path = resolve_seed_file_key(payload.file_key)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+
+    if not path.is_file():
+        raise HTTPException(
+            status_code=404,
+            detail="El archivo de seed no existe.",
+        )
+
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise HTTPException(
+            status_code=422,
+            detail="El archivo de seed no es valido.",
+        ) from exc
+
+    name = opening_name_from_file(path)
+    if name is None:
+        raise HTTPException(
+            status_code=422,
+            detail="El archivo de seed no tiene un nombre de apertura valido.",
+        )
+
+    if session.exec(select(Opening).where(Opening.name == name)).first():
+        raise HTTPException(
+            status_code=409,
+            detail="Ya existe una apertura con ese nombre.",
+        )
+
+    try:
+        opening = import_opening(session, data, on_conflict="reject")
+    except ImportNameConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+    except InvalidImportError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+
+    visibility = (
+        "private" if payload.file_key.startswith("private/") else "public"
+    )
+    return OpeningRead(
+        id=opening.id,
+        name=opening.name,
+        color=opening.color,
+        node_count=count_nodes(session, opening.id),
+        accuracy=opening_accuracy(session, opening.id),
+        in_seed=True,
+        seed_visibility=visibility,
+    )
 
 
 async def _read_pgn_payload(request: Request) -> tuple[str, str | None, str]:
@@ -149,13 +265,15 @@ async def import_pgn_endpoint(
     except InvalidImportError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
 
+    visibility = seed_visibility(opening.name)
     return OpeningRead(
         id=opening.id,
         name=opening.name,
         color=opening.color,
         node_count=count_nodes(session, opening.id),
         accuracy=opening_accuracy(session, opening.id),
-        in_seed=seed_file_exists(opening.name),
+        in_seed=visibility is not None,
+        seed_visibility=visibility,
     )
 
 

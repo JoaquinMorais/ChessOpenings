@@ -35,8 +35,12 @@ export function renameOpening(
   });
 }
 
-export function deleteOpening(openingId: number): Promise<void> {
-  return apiFetch<void>(`/openings/${openingId}`, {
+export function deleteOpening(
+  openingId: number,
+  scope?: "local" | "seed" | "both",
+): Promise<void> {
+  const query = scope ? `?scope=${scope}` : "";
+  return apiFetch<void>(`/openings/${openingId}${query}`, {
     method: "DELETE",
   });
 }
@@ -57,9 +61,11 @@ export function importOpening(
 }
 export function saveOpeningSeed(
   openingId: number,
+  visibility: "public" | "private" = "public",
 ): Promise<SeedFileResponse> {
   return apiFetch<SeedFileResponse>(`/openings/${openingId}/seed`, {
     method: "POST",
+    body: JSON.stringify({ visibility }),
   });
 }
 

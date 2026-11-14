@@ -1,0 +1,83 @@
+{
+  "format": "chess-openings-trainer",
+  "version": 1,
+  "opening": {
+    "name": "Italian Game",
+    "color": "white",
+    "tree": {
+      "evaluation": null,
+      "children": [
+        {
+          "san": "e4",
+          "name": null,
+          "comment": null,
+          "classification": null,
+          "evaluation": null,
+          "children": [
+            {
+              "san": "e5",
+              "name": null,
+              "comment": null,
+              "classification": null,
+              "evaluation": null,
+              "children": [
+                {
+                  "san": "Nf3",
+                  "name": null,
+                  "comment": null,
+                  "classification": null,
+                  "evaluation": null,
+                  "children": [
+                    {
+                      "san": "Nc6",
+                      "name": null,
+                      "comment": null,
+                      "classification": null,
+                      "evaluation": null,
+                      "children": [
+                        {
+                          "san": "Bc4",
+                          "name": null,
+                          "comment": null,
+                          "classification": null,
+                          "evaluation": null,
+                          "children": []
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "san": "c5",
+              "name": null,
+              "comment": null,
+              "classification": null,
+              "evaluation": null,
+              "children": [
+                {
+                  "san": "Nf3",
+                  "name": null,
+                  "comment": null,
+                  "classification": null,
+                  "evaluation": null,
+                  "children": [
+                    {
+                      "san": "d6",
+                      "name": null,
+                      "comment": null,
+                      "classification": null,
+                      "evaluation": null,
+                      "children": []
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

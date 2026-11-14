@@ -1,5 +1,8 @@
+import { useState } from "react";
+
 interface DeleteSeedDialogProps {
   openingName: string;
+  seedVisibility: "public" | "private" | null;
   busy: boolean;
   error: string | null;
   onDeleteOnly: () => void;
@@ -9,12 +12,18 @@ interface DeleteSeedDialogProps {
 
 function DeleteSeedDialog({
   openingName,
+  seedVisibility,
   busy,
   error,
   onDeleteOnly,
   onDeleteWithSeed,
   onCancel,
 }: DeleteSeedDialogProps) {
+  const [confirmName, setConfirmName] = useState("");
+  const isPrivate = seedVisibility === "private";
+  const canDeleteWithSeed =
+    !isPrivate || confirmName.trim() === openingName;
+
   return (
     <div className="modal-backdrop" role="presentation">
       <section
@@ -28,9 +37,28 @@ function DeleteSeedDialog({
           Eliminar “{openingName}”
         </h3>
         <p>
-          Esta apertura está guardada en <code>seed_import</code>. Si la
-          eliminás solo de la base, volverá a aparecer al reiniciar.
+          Si la eliminás solo de la base, no volverá a aparecer al
+          reiniciar. El archivo seguirá guardado en el seed.
         </p>
+
+        {isPrivate && (
+          <div className="form-field">
+            <p className="form-error">
+              El archivo private no está en git. Para borrarlo también del
+              seed, escribí el nombre exacto de la apertura.
+            </p>
+            <label>
+              <span>Escribí “{openingName}”</span>
+              <input
+                type="text"
+                value={confirmName}
+                onChange={(event) => setConfirmName(event.target.value)}
+                placeholder={openingName}
+                disabled={busy}
+              />
+            </label>
+          </div>
+        )}
 
         {error && (
           <p className="form-error" role="alert">
@@ -59,7 +87,7 @@ function DeleteSeedDialog({
             type="button"
             className="button button--danger"
             onClick={onDeleteWithSeed}
-            disabled={busy}
+            disabled={busy || !canDeleteWithSeed}
           >
             {busy ? "Eliminando..." : "Eliminar también del seed"}
           </button>

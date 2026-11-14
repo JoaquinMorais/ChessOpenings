@@ -5,7 +5,9 @@ import type {
   OpeningPgnImportPayload,
   OpeningRenamePayload,
   OpeningSummary,
+  SeedFileInfo,
   SeedFileResponse,
+  SeedVisibility,
 } from "../types/opening";
 
 export function listOpenings(): Promise<OpeningSummary[]> {
@@ -61,7 +63,7 @@ export function importOpening(
 }
 export function saveOpeningSeed(
   openingId: number,
-  visibility: "public" | "private" = "public",
+  visibility: SeedVisibility = "public",
 ): Promise<SeedFileResponse> {
   return apiFetch<SeedFileResponse>(`/openings/${openingId}/seed`, {
     method: "POST",
@@ -72,6 +74,19 @@ export function saveOpeningSeed(
 export function deleteOpeningSeed(openingId: number): Promise<void> {
   return apiFetch<void>(`/openings/${openingId}/seed`, {
     method: "DELETE",
+  });
+}
+
+export function listSeedFiles(): Promise<SeedFileInfo[]> {
+  return apiFetch<SeedFileInfo[]>("/seed/files");
+}
+
+export function restoreSeedFile(
+  fileKey: string,
+): Promise<OpeningSummary> {
+  return apiFetch<OpeningSummary>("/seed/restore", {
+    method: "POST",
+    body: JSON.stringify({ file_key: fileKey }),
   });
 }
 

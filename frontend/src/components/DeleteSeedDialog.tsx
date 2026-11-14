@@ -1,8 +1,11 @@
 import { useState } from "react";
 
+import PrivateSeedConfirmation from "./PrivateSeedConfirmation";
+import type { SeedVisibility } from "../types/opening";
+
 interface DeleteSeedDialogProps {
   openingName: string;
-  seedVisibility: "public" | "private" | null;
+  seedVisibility: SeedVisibility | null;
   busy: boolean;
   error: string | null;
   onDeleteOnly: () => void;
@@ -32,32 +35,30 @@ function DeleteSeedDialog({
         aria-modal="true"
         aria-labelledby="delete-seed-title"
       >
-        <p className="eyebrow">Opening en seed</p>
+        <p className="eyebrow">Seed</p>
         <h3 id="delete-seed-title">
-          Eliminar “{openingName}”
+          Borrar “{openingName}”
         </h3>
-        <p>
-          Si la eliminás solo de la base, no volverá a aparecer al
-          reiniciar. El archivo seguirá guardado en el seed.
-        </p>
+        <p>Esta apertura está guardada en el seed.</p>
+
+        <div className="seed-delete-help">
+          <p>
+            <strong>Borrar solo de la base:</strong> se mantiene en el
+            seed; volverá si se crea una base nueva.
+          </p>
+          <p>
+            <strong>Borrar también del seed:</strong> se elimina la
+            apertura y su archivo guardado.
+          </p>
+        </div>
 
         {isPrivate && (
-          <div className="form-field">
-            <p className="form-error">
-              El archivo private no está en git. Para borrarlo también del
-              seed, escribí el nombre exacto de la apertura.
-            </p>
-            <label>
-              <span>Escribí “{openingName}”</span>
-              <input
-                type="text"
-                value={confirmName}
-                onChange={(event) => setConfirmName(event.target.value)}
-                placeholder={openingName}
-                disabled={busy}
-              />
-            </label>
-          </div>
+          <PrivateSeedConfirmation
+            openingName={openingName}
+            value={confirmName}
+            onChange={setConfirmName}
+            disabled={busy}
+          />
         )}
 
         {error && (
@@ -81,7 +82,7 @@ function DeleteSeedDialog({
             onClick={onDeleteOnly}
             disabled={busy}
           >
-            {busy ? "Eliminando..." : "Eliminar solo de la base"}
+            {busy ? "Borrando..." : "Borrar solo de la base"}
           </button>
           <button
             type="button"
@@ -89,7 +90,7 @@ function DeleteSeedDialog({
             onClick={onDeleteWithSeed}
             disabled={busy || !canDeleteWithSeed}
           >
-            {busy ? "Eliminando..." : "Eliminar también del seed"}
+            {busy ? "Borrando..." : "Borrar también del seed"}
           </button>
         </div>
       </section>

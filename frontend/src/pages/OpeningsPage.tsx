@@ -19,6 +19,9 @@ import DeleteSeedDialog from "../components/DeleteSeedDialog";
 import ImportConflictDialog from "../components/ImportConflictDialog";
 import ImportPgnDialog from "../components/ImportPgnDialog";
 import OpeningForm from "../components/OpeningForm";
+import RemoveSeedDialog from "../components/RemoveSeedDialog";
+import RestoreSeedPanel from "../components/RestoreSeedPanel";
+import SaveSeedDialog from "../components/SaveSeedDialog";
 import type {
   OpeningColor,
   OpeningPgnImportPayload,
@@ -74,10 +77,17 @@ function OpeningsPage() {
   const [pgnImporting, setPgnImporting] = useState(false);
   const [pgnError, setPgnError] = useState<string | null>(null);
   const [seedingId, setSeedingId] = useState<number | null>(null);
+  const [pendingSeedSave, setPendingSeedSave] =
+    useState<OpeningSummary | null>(null);
+  const [seedSaveError, setSeedSaveError] = useState<string | null>(null);
   const [removingSeedId, setRemovingSeedId] = useState<number | null>(null);
+  const [pendingSeedRemove, setPendingSeedRemove] =
+    useState<OpeningSummary | null>(null);
+  const [removeSeedError, setRemoveSeedError] = useState<string | null>(null);
   const [pendingSeedDelete, setPendingSeedDelete] =
     useState<OpeningSummary | null>(null);
   const [deleteSeedError, setDeleteSeedError] = useState<string | null>(null);
+  const [showRestore, setShowRestore] = useState(false);
   const [ioError, setIoError] = useState<string | null>(null);
   const [ioSuccess, setIoSuccess] = useState<string | null>(null);
   const [pendingImport, setPendingImport] = useState<{
@@ -224,50 +234,75 @@ function OpeningsPage() {
     setDeleteSeedError(null);
   };
 
-  const handleSaveSeed = async (opening: OpeningSummary) => {
-    setSeedingId(opening.id);
+  const openSeedSaveDialog = (opening: OpeningSummary) => {
+    setPendingSeedSave(opening);
+    setSeedSaveError(null);
+  };
+
+  const handleCancelSeedSave = () => {
+    if (seedingId !== null) {
+      return;
+    }
+    setPendingSeedSave(null);
+    setSeedSaveError(null);
+  };
+
+  const handleSeedSaveSubmit = async (
+    visibility: "public" | "private",
+  ) => {
+    if (!pendingSeedSave) {
+      return;
+    }
+
+    setSeedingId(pendingSeedSave.id);
+    setSeedSaveError(null);
     setIoError(null);
     setIoSuccess(null);
     try {
       const result = await saveOpeningSeed(
-        opening.id,
-        opening.seed_visibility ?? "public",
+        pendingSeedSave.id,
+        visibility,
       );
+      setPendingSeedSave(null);
       setIoSuccess(`Guardado en ${result.path}.`);
       await loadOpenings();
     } catch (error) {
-      setIoError(getErrorMessage(error));
+      setSeedSaveError(getErrorMessage(error));
     } finally {
       setSeedingId(null);
     }
   };
 
-  const handleRemoveSeed = async (opening: OpeningSummary) => {
-    if (opening.seed_visibility === "private") {
-      const typed = window.prompt(
-        `Escribí "${opening.name}" para confirmar el borrado irreversible del archivo private.`,
-      );
-      if (typed !== opening.name) {
-        return;
-      }
-    } else {
-      const confirmed = window.confirm(
-        `¿Quitar "${opening.name}" del seed? El archivo guardado se eliminará.`,
-      );
-      if (!confirmed) {
-        return;
-      }
+  const openSeedRemoveDialog = (opening: OpeningSummary) => {
+    setPendingSeedRemove(opening);
+    setRemoveSeedError(null);
+  };
+
+  const handleCancelSeedRemove = () => {
+    if (removingSeedId !== null) {
+      return;
+    }
+    setPendingSeedRemove(null);
+    setRemoveSeedError(null);
+  };
+
+  const handleConfirmSeedRemove = async () => {
+    if (!pendingSeedRemove) {
+      return;
     }
 
+    const opening = pendingSeedRemove;
     setRemovingSeedId(opening.id);
+    setRemoveSeedError(null);
     setIoError(null);
     setIoSuccess(null);
     try {
       await deleteOpeningSeed(opening.id);
+      setPendingSeedRemove(null);
       setIoSuccess(`"${opening.name}" quitado del seed.`);
       await loadOpenings();
     } catch (error) {
-      setIoError(getErrorMessage(error));
+      setRemoveSeedError(getErrorMessage(error));
     } finally {
       setRemovingSeedId(null);
     }
@@ -431,6 +466,13 @@ function OpeningsPage() {
           >
             Importar PGN
           </button>
+          <button
+            type="button"
+            className="button button--ghost"
+            onClick={() => setShowRestore((visible) => !visible)}
+          >
+            {showRestore ? "Ocultar restauración" : "Restaurar desde seed"}
+          </button>
           <button type="button" className="button" onClick={openCreateForm}>
             Nuevo opening
           </button>
@@ -500,6 +542,13 @@ function OpeningsPage() {
         </div>
       )}
 
+      {showRestore && (
+        <RestoreSeedPanel
+          onRestored={loadOpenings}
+          onClose={() => setShowRestore(false)}
+        />
+      )}
+
       {list.status === "loading" && (
         <p className="state-message">Cargando aperturas...</p>
       )}
@@ -540,8 +589,14 @@ function OpeningsPage() {
                 <div>
                   <h3>
                     {opening.name}
-                    {opening.in_seed && (
-                      <span className="seed-badge">En seed</span>
+                    {opening.seed_visibility && (
+                      <span
+                        className={`seed-badge seed-badge--${opening.seed_visibility}`}
+                      >
+                        {opening.seed_visibility === "public"
+                          ? "Publica"
+                          : "Privada"}
+                      </span>
                     )}
                   </h3>
                   <p className="opening-meta">
@@ -592,7 +647,7 @@ function OpeningsPage() {
                 <button
                   type="button"
                   className="button button--small button--ghost"
-                  onClick={() => void handleSaveSeed(opening)}
+                  onClick={() => openSeedSaveDialog(opening)}
                   disabled={
                     seedingId === opening.id ||
                     removingSeedId === opening.id
@@ -608,7 +663,7 @@ function OpeningsPage() {
                   <button
                     type="button"
                     className="button button--small button--ghost"
-                    onClick={() => void handleRemoveSeed(opening)}
+                    onClick={() => openSeedRemoveDialog(opening)}
                     disabled={
                       seedingId === opening.id ||
                       removingSeedId === opening.id
@@ -664,6 +719,29 @@ function OpeningsPage() {
           onDeleteOnly={() => void handleSeedDelete(false)}
           onDeleteWithSeed={() => void handleSeedDelete(true)}
           onCancel={handleCancelSeedDelete}
+        />
+      )}
+
+      {pendingSeedSave && (
+        <SaveSeedDialog
+          key={pendingSeedSave.id}
+          openingName={pendingSeedSave.name}
+          initialVisibility={pendingSeedSave.seed_visibility}
+          busy={seedingId === pendingSeedSave.id}
+          error={seedSaveError}
+          onSubmit={(visibility) => void handleSeedSaveSubmit(visibility)}
+          onCancel={handleCancelSeedSave}
+        />
+      )}
+
+      {pendingSeedRemove && (
+        <RemoveSeedDialog
+          openingName={pendingSeedRemove.name}
+          seedVisibility={pendingSeedRemove.seed_visibility}
+          busy={removingSeedId === pendingSeedRemove.id}
+          error={removeSeedError}
+          onConfirm={() => void handleConfirmSeedRemove()}
+          onCancel={handleCancelSeedRemove}
         />
       )}
 

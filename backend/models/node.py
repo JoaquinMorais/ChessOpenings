@@ -26,11 +26,19 @@ class Node(SQLModel, table=True):
     classification: Optional[str] = None
     eval_cp: Optional[int] = None
     eval_mate: Optional[int] = None
+    eval_source: Optional[str] = None
 
     @property
-    def evaluation(self) -> Optional[dict[str, int]]:
+    def evaluation(self) -> Optional[dict[str, int | str]]:
+        source = self.eval_source or "manual"
         if self.eval_cp is not None:
-            return {"cp": self.eval_cp}
+            return {"cp": self.eval_cp, "source": source}
         if self.eval_mate is not None:
-            return {"mate": self.eval_mate}
+            if self.eval_mate == 0:
+                side = self.fen.split()[1] if len(self.fen.split()) > 1 else "w"
+                return {
+                    "cp": -9999 if side == "w" else 9999,
+                    "source": source,
+                }
+            return {"mate": self.eval_mate, "source": source}
         return None

@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { Chess } from "chess.js";
 
 import { ApiError } from "../api/client";
+import { useEvaluationJobs } from "../contexts/EvaluationJobsContext";
 import { addMove, deleteNode, getTree, makeMain } from "../api/nodes";
 import { getOpening, setOpeningFavorite } from "../api/openings";
 import ChessBoardView from "../components/ChessBoardView";
@@ -140,6 +141,10 @@ function OpeningEditorPage() {
   const [saving, setSaving] = useState(false);
   const [branchBusy, setBranchBusy] = useState(false);
   const [favoriteBusy, setFavoriteBusy] = useState(false);
+  const [evaluationNotice, setEvaluationNotice] = useState<{
+    message: string;
+    kind: "success" | "info" | "error";
+  } | null>(null);
   const [boardFlipped, setBoardFlipped] = useState(false);
   const [branchNotice, setBranchNotice] = useState<string | null>(null);
   const [transpositionNotice, setTranspositionNotice] = useState<{
@@ -151,6 +156,8 @@ function OpeningEditorPage() {
   >(null);
   const branchNoticeTimerRef = useRef<number | null>(null);
   const currentMovePanelRef = useRef<CurrentMovePanelHandle>(null);
+  const handledEvaluationJobRef = useRef<string | null>(null);
+  const { lastFinished } = useEvaluationJobs();
 
   useEffect(() => {
     return () => {
@@ -243,6 +250,43 @@ function OpeningEditorPage() {
     },
     [openingId],
   );
+
+  useEffect(() => {
+    if (!lastFinished || lastFinished.openingId !== openingId) {
+      return;
+    }
+    if (handledEvaluationJobRef.current === lastFinished.jobId) {
+      return;
+    }
+    handledEvaluationJobRef.current = lastFinished.jobId;
+
+    const notice =
+      lastFinished.state === "error"
+        ? {
+            message:
+              lastFinished.message ??
+              "No se pudo completar la valoración.",
+            kind: "error" as const,
+          }
+        : lastFinished.state === "cancelled"
+          ? {
+              message: "Valoración cancelada.",
+              kind: "info" as const,
+            }
+          : lastFinished.errors > 0
+            ? {
+                message: `Evaluaciones actualizadas con ${lastFinished.errors} errores.`,
+                kind: "info" as const,
+              }
+            : {
+                message: "Evaluaciones actualizadas.",
+                kind: "success" as const,
+              };
+
+    void refreshTree(currentNodeId, currentNodeId)
+      .then(() => setEvaluationNotice(notice))
+      .catch((error) => setActionError(getErrorMessage(error)));
+  }, [currentNodeId, lastFinished, openingId, refreshTree]);
 
   const index = useMemo(() => (tree ? indexTree(tree) : null), [tree]);
   const currentNode =
@@ -627,6 +671,24 @@ function OpeningEditorPage() {
         <div className="alert" role="alert">
           <p>{actionError}</p>
           <button type="button" onClick={() => setActionError(null)}>
+            Cerrar
+          </button>
+        </div>
+      )}
+
+      {evaluationNotice && (
+        <div
+          className={`alert${
+            evaluationNotice.kind === "success"
+              ? " alert--success"
+              : evaluationNotice.kind === "info"
+                ? " alert--info"
+                : ""
+          }`}
+          role={evaluationNotice.kind === "error" ? "alert" : "status"}
+        >
+          <p>{evaluationNotice.message}</p>
+          <button type="button" onClick={() => setEvaluationNotice(null)}>
             Cerrar
           </button>
         </div>

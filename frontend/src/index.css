@@ -1944,3 +1944,146 @@ button {
   background: rgba(64, 61, 57, 0.92);
   color: #f6f7f4;
 }
+
+.evaluation-source {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.08rem 0.38rem;
+  border-radius: 999px;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  line-height: 1.35;
+  vertical-align: middle;
+}
+
+.evaluation-source--engine {
+  background: rgba(92, 139, 176, 0.14);
+  color: #2f536b;
+}
+
+.evaluation-source--llm {
+  background: rgba(197, 154, 43, 0.16);
+  color: #7a5b12;
+}
+
+.evaluation-source--manual {
+  background: rgba(31, 61, 43, 0.08);
+  color: #536256;
+}
+
+.evaluation-field-label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.variation-button .evaluation-source {
+  margin-left: 0.1rem;
+}
+
+.evaluation-job-progress {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.85rem;
+  border: 1px solid rgba(22, 33, 27, 0.12);
+  border-radius: 0.7rem;
+  background: rgba(31, 61, 43, 0.04);
+}
+
+.evaluation-job-progress--compact {
+  flex-basis: 100%;
+  width: 100%;
+  margin-top: 0.2rem;
+}
+
+.evaluation-job-progress__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  color: #425346;
+  font-size: 0.82rem;
+}
+
+.evaluation-job-progress__header strong {
+  color: #1f3d2b;
+  font-size: 0.88rem;
+}
+
+.evaluation-job-progress__bar {
+  height: 0.45rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(31, 61, 43, 0.12);
+}
+
+.evaluation-job-progress__fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #2f7d4a;
+  transition: width 250ms ease;
+}
+
+.evaluation-job-progress__message {
+  margin: 0;
+  color: #536256;
+  font-size: 0.8rem;
+}
+
+.evaluation-job-progress .button {
+  justify-self: start;
+}
+
+.seed-evaluation-option {
+  display: grid;
+  gap: 0.4rem;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid rgba(22, 33, 27, 0.14);
+  border-radius: 0.6rem;
+  background: #fff;
+}
+
+.seed-evaluation-option label {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  color: #425346;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.seed-evaluation-option input {
+  margin-top: 0.15rem;
+  accent-color: #2f7d4a;
+}
+
+.seed-evaluation-option button {
+  justify-self: start;
+}
+
+.seed-external-warning {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.75rem 0.8rem;
+  border: 1px solid rgba(176, 63, 53, 0.35);
+  border-radius: 0.55rem;
+  background: rgba(176, 63, 53, 0.08);
+  color: #8c342d;
+  font-size: 0.88rem;
+  line-height: 1.35;
+}
+
+.seed-external-warning label {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-weight: 600;
+}
+
+.seed-external-warning input {
+  margin-top: 0.15rem;
+  accent-color: #9a332c;
+}

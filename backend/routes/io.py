@@ -15,6 +15,8 @@ from schemas.opening_schema import (
     SeedRestoreRequest,
     SeedSaveRequest,
 )
+from utils.evaluation_jobs import JobAlreadyRunning, start_evaluation_job
+from utils.evaluators import is_external_evaluator
 from utils.openings import count_nodes, opening_accuracy
 from utils.opening_pgn import PgnImportError, export_opening_pgn, pgn_to_import_data
 from utils.opening_io import (
@@ -90,9 +92,40 @@ def save_opening_seed(
     opening = session.get(Opening, opening_id)
     if not opening:
         raise HTTPException(status_code=404, detail="La apertura no existe.")
+
+    if (
+        payload.evaluate
+        and is_external_evaluator()
+        and payload.visibility == "private"
+        and not payload.allow_external
+    ):
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "El evaluator externo requiere allow_external=true "
+                "para valorar una apertura privada."
+            ),
+        )
+
     path = write_seed_file(session, opening, payload.visibility)
+    job = None
+    message = None
+    if payload.evaluate:
+        try:
+            job = start_evaluation_job(
+                session,
+                opening.id,
+                payload.visibility,
+            )
+        except JobAlreadyRunning as exc:
+            raise HTTPException(status_code=409, detail=str(exc))
+        if job is None:
+            message = "La apertura ya esta valorada."
+
     return SeedFileRead(
-        path=f"data/seed_import/{payload.visibility}/{path.name}"
+        path=f"data/seed_import/{payload.visibility}/{path.name}",
+        job_id=job.id if job is not None else None,
+        message=message,
     )
 
 

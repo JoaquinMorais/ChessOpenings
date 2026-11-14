@@ -234,10 +234,10 @@ def test_export_import_pgn_evaluations_round_trip(client: TestClient):
     tree = client.get(f"{BASE}/{imported_id}/tree").json()
     line = _mainline(tree)
     assert [node["evaluation"] for node in line] == [
-        {"cp": 35},
-        {"mate": 3},
-        {"mate": -2},
-        {"cp": -120},
+        {"cp": 35, "source": "manual"},
+        {"mate": 3, "source": "manual"},
+        {"mate": -2, "source": "manual"},
+        {"cp": -120, "source": "manual"},
     ]
     assert line[0]["comment"] == "Comentario e4"
     assert line[0]["classification"] == "book"
@@ -263,10 +263,10 @@ def test_import_lichess_pgn_eval_and_clk(client: TestClient):
     tree = client.get(f"{BASE}/{response.json()['id']}/tree").json()
     line = _mainline(tree)
     assert [node["evaluation"] for node in line] == [
-        {"cp": 35},
-        {"cp": -12},
-        {"mate": -2},
-        {"mate": 3},
+        {"cp": 35, "source": "manual"},
+        {"cp": -12, "source": "manual"},
+        {"mate": -2, "source": "manual"},
+        {"mate": 3, "source": "manual"},
     ]
     assert [node["comment"] for node in line] == [
         "Mejor jugada",

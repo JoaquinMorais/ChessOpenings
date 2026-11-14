@@ -26,6 +26,7 @@ import {
   parseEvaluation,
 } from "../utils/evaluation";
 import ClassificationBadge from "./ClassificationBadge";
+import EvaluationSourceBadge from "./EvaluationSourceBadge";
 
 interface CurrentMovePanelProps {
   node: TreeNode;
@@ -129,6 +130,27 @@ const CurrentMovePanel = forwardRef<CurrentMovePanelHandle, CurrentMovePanelProp
       setStatus("saved");
       setError(null);
     }, [node.id]);
+
+    useEffect(() => {
+      if (evaluationText !== snapshotRef.current.evaluationText) {
+        return;
+      }
+      const next = node.evaluation;
+      const current = snapshotRef.current.evaluation;
+      if (
+        evaluationSignature(next) === evaluationSignature(current) &&
+        (next?.source ?? "manual") === (current?.source ?? "manual")
+      ) {
+        return;
+      }
+      const nextEvaluationText = next ? formatEvaluation(next) : "";
+      setEvaluationText(nextEvaluationText);
+      snapshotRef.current = {
+        ...snapshotRef.current,
+        evaluationText: nextEvaluationText,
+        evaluation: next,
+      };
+    }, [evaluationText, node.evaluation]);
 
     const parsed = parseEvaluationText(evaluationText);
     const metadataDirty =
@@ -328,7 +350,10 @@ const CurrentMovePanel = forwardRef<CurrentMovePanelHandle, CurrentMovePanelProp
 
           <div className="evaluation-row">
             <label className="form-field">
-              <span>Evaluación</span>
+              <span className="evaluation-field-label">
+                <span>Evaluación</span>
+                <EvaluationSourceBadge evaluation={node.evaluation} />
+              </span>
               <input
                 type="text"
                 value={evaluationText}

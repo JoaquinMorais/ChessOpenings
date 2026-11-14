@@ -106,7 +106,10 @@ def _parse_import(data: Any) -> _ParsedImport:
         raise InvalidImportError("Los hijos deben ser una lista.")
 
     try:
-        root_evaluation = parse_evaluation(tree_data.get("evaluation"))
+        root_evaluation = parse_evaluation(
+            tree_data.get("evaluation"),
+            INITIAL_FEN,
+        )
     except ValueError as exc:
         raise InvalidImportError(
             f"Evaluacion invalida en la posicion inicial: {exc}"
@@ -186,14 +189,6 @@ def _parse_children(
                 f"Clasificacion desconocida en {move_path}: {classification}"
             )
 
-        try:
-            evaluation = parse_evaluation(child_data.get("evaluation"))
-        except ValueError as exc:
-            move_path = _format_move_path(path + [san_raw])
-            raise InvalidImportError(
-                f"Evaluacion invalida en {move_path}: {exc}"
-            ) from exc
-
         child_children = child_data.get("children", [])
         if child_children is None:
             child_children = []
@@ -205,6 +200,17 @@ def _parse_children(
         except IllegalMoveError:
             move_path = _format_move_path(path + [san_raw])
             raise InvalidImportError(f"Jugada ilegal: {move_path}")
+
+        try:
+            evaluation = parse_evaluation(
+                child_data.get("evaluation"),
+                result.fen,
+            )
+        except ValueError as exc:
+            move_path = _format_move_path(path + [san_raw])
+            raise InvalidImportError(
+                f"Evaluacion invalida en {move_path}: {exc}"
+            ) from exc
 
         parsed.append(
             {
@@ -237,7 +243,8 @@ def _insert_children(
     session: Session, opening_id: int, parent_id: int, children: List[Dict[str, Any]]
 ) -> None:
     for index, child in enumerate(children):
-        eval_cp, eval_mate = evaluation_to_columns(child["evaluation"])
+        evaluation = child["evaluation"]
+        eval_cp, eval_mate = evaluation_to_columns(evaluation)
         node = Node(
             opening_id=opening_id,
             parent_id=parent_id,
@@ -251,6 +258,7 @@ def _insert_children(
             classification=child["classification"],
             eval_cp=eval_cp,
             eval_mate=eval_mate,
+            eval_source=evaluation.source if evaluation is not None else None,
         )
         session.add(node)
         session.flush()
@@ -292,6 +300,11 @@ def import_opening(session: Session, data: Any, on_conflict: str = "reject") -> 
             order_index=0,
             eval_cp=root_eval_cp,
             eval_mate=root_eval_mate,
+            eval_source=(
+                parsed.evaluation.source
+                if parsed.evaluation is not None
+                else None
+            ),
         )
         session.add(root)
         session.flush()

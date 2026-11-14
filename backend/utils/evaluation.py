@@ -15,9 +15,23 @@ def evaluation_to_columns(
     return None, evaluation.mate
 
 
-def parse_evaluation(raw: Any) -> Evaluation | None:
+def parse_evaluation(
+    raw: Any,
+    fen: str | None = None,
+) -> Evaluation | None:
     if raw is None:
         return None
+
+    if (
+        isinstance(raw, dict)
+        and raw.get("mate") == 0
+        and raw.get("source") == "engine"
+        and fen is not None
+    ):
+        fields = fen.split()
+        side = fields[1] if len(fields) > 1 else "w"
+        raw = {key: value for key, value in raw.items() if key != "mate"}
+        raw["cp"] = -9999 if side == "w" else 9999
 
     try:
         return Evaluation.model_validate(raw)

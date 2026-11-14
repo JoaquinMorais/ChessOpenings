@@ -3,6 +3,7 @@ import type { ChangeEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
 import { ApiError } from "../api/client";
+import { useEvaluationJobs } from "../contexts/EvaluationJobsContext";
 import {
   createOpening,
   deleteOpening,
@@ -17,6 +18,7 @@ import {
   setOpeningFavorite,
 } from "../api/openings";
 import DeleteSeedDialog from "../components/DeleteSeedDialog";
+import EvaluationJobProgress from "../components/EvaluationJobProgress";
 import FavoriteButton from "../components/FavoriteButton";
 import ImportConflictDialog from "../components/ImportConflictDialog";
 import ImportPgnDialog from "../components/ImportPgnDialog";
@@ -28,6 +30,7 @@ import type {
   OpeningColor,
   OpeningPgnImportPayload,
   OpeningSummary,
+  SeedSaveOptions,
 } from "../types/opening";
 
 type ListState =
@@ -83,6 +86,9 @@ function OpeningsPage() {
   const [pendingSeedSave, setPendingSeedSave] =
     useState<OpeningSummary | null>(null);
   const [seedSaveError, setSeedSaveError] = useState<string | null>(null);
+  const [seedSaveExternalRequired, setSeedSaveExternalRequired] =
+    useState(false);
+  const [seedSaveJobId, setSeedSaveJobId] = useState<string | null>(null);
   const [removingSeedId, setRemovingSeedId] = useState<number | null>(null);
   const [pendingSeedRemove, setPendingSeedRemove] =
     useState<OpeningSummary | null>(null);
@@ -100,6 +106,8 @@ function OpeningsPage() {
   const [importBusy, setImportBusy] = useState(false);
   const [conflictError, setConflictError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { jobs, trackJob, cancelJob, lastFinished } =
+    useEvaluationJobs();
 
   const loadOpenings = useCallback(async () => {
     setList({ status: "loading" });
@@ -114,6 +122,29 @@ function OpeningsPage() {
   useEffect(() => {
     void loadOpenings();
   }, [loadOpenings]);
+
+  useEffect(() => {
+    if (!lastFinished) {
+      return;
+    }
+    if (lastFinished.state === "error") {
+      setIoError(
+        lastFinished.message ?? "No se pudo completar la valoración.",
+      );
+      return;
+    }
+    if (lastFinished.state === "cancelled") {
+      setIoSuccess("Valoración cancelada.");
+      return;
+    }
+    if (lastFinished.state === "done") {
+      setIoSuccess(
+        lastFinished.errors > 0
+          ? `Valoración completada con ${lastFinished.errors} errores.`
+          : "Valoración completada.",
+      );
+    }
+  }, [lastFinished]);
 
   const openCreateForm = () => {
     setForm({ mode: "create" });
@@ -240,6 +271,8 @@ function OpeningsPage() {
   const openSeedSaveDialog = (opening: OpeningSummary) => {
     setPendingSeedSave(opening);
     setSeedSaveError(null);
+    setSeedSaveExternalRequired(false);
+    setSeedSaveJobId(null);
   };
 
   const handleCancelSeedSave = () => {
@@ -248,29 +281,54 @@ function OpeningsPage() {
     }
     setPendingSeedSave(null);
     setSeedSaveError(null);
+    setSeedSaveExternalRequired(false);
+    setSeedSaveJobId(null);
   };
 
-  const handleSeedSaveSubmit = async (
-    visibility: "public" | "private",
-  ) => {
+  const handleSeedSaveSubmit = async (options: SeedSaveOptions) => {
     if (!pendingSeedSave) {
       return;
     }
 
-    setSeedingId(pendingSeedSave.id);
+    const opening = pendingSeedSave;
+    setSeedingId(opening.id);
     setSeedSaveError(null);
+    setSeedSaveExternalRequired(false);
     setIoError(null);
     setIoSuccess(null);
     try {
       const result = await saveOpeningSeed(
-        pendingSeedSave.id,
-        visibility,
+        opening.id,
+        options.visibility,
+        {
+          evaluate: options.evaluate,
+          allow_external: options.allow_external,
+        },
       );
+      if (result.job_id) {
+        trackJob(
+          { id: opening.id, name: opening.name },
+          result.job_id,
+          options.total,
+        );
+        setSeedSaveJobId(result.job_id);
+        return;
+      }
       setPendingSeedSave(null);
-      setIoSuccess(`Guardado en ${result.path}.`);
+      setSeedSaveJobId(null);
+      setIoSuccess(result.message ?? `Guardado en ${result.path}.`);
       await loadOpenings();
     } catch (error) {
-      setSeedSaveError(getErrorMessage(error));
+      if (
+        error instanceof ApiError &&
+        error.status === 409 &&
+        error.message.toLowerCase().includes("allow_external") &&
+        !options.allow_external
+      ) {
+        setSeedSaveExternalRequired(true);
+      } else {
+        setSeedSaveError(getErrorMessage(error));
+      }
     } finally {
       setSeedingId(null);
     }
@@ -474,6 +532,9 @@ function OpeningsPage() {
     list.status === "ok"
       ? list.openings.findIndex((opening) => !opening.is_favorite)
       : -1;
+  const activeSeedJob = seedSaveJobId
+    ? jobs[seedSaveJobId] ?? null
+    : null;
 
   return (
     <section className="page">
@@ -614,7 +675,12 @@ function OpeningsPage() {
 
       {list.status === "ok" && list.openings.length > 0 && (
         <ul className="opening-list">
-          {list.openings.map((opening, index) => (
+          {list.openings.map((opening, index) => {
+            const runningJob = Object.values(jobs).find(
+              (job) =>
+                job.openingId === opening.id && job.state === "running",
+            );
+            return (
             <Fragment key={opening.id}>
               {index === firstNonFavoriteIndex &&
                 firstNonFavoriteIndex > 0 && (
@@ -743,9 +809,17 @@ function OpeningsPage() {
                   {deletingId === opening.id ? "Eliminando..." : "Eliminar"}
                 </button>
                 </div>
+                {runningJob && (
+                  <EvaluationJobProgress
+                    job={runningJob}
+                    onCancel={cancelJob}
+                    compact
+                  />
+                )}
               </li>
             </Fragment>
-          ))}
+            );
+          })}
         </ul>
       )}
 
@@ -779,11 +853,15 @@ function OpeningsPage() {
       {pendingSeedSave && (
         <SaveSeedDialog
           key={pendingSeedSave.id}
+          openingId={pendingSeedSave.id}
           openingName={pendingSeedSave.name}
           initialVisibility={pendingSeedSave.seed_visibility}
           busy={seedingId === pendingSeedSave.id}
           error={seedSaveError}
-          onSubmit={(visibility) => void handleSeedSaveSubmit(visibility)}
+          externalRequired={seedSaveExternalRequired}
+          job={activeSeedJob}
+          onSubmit={(options) => void handleSeedSaveSubmit(options)}
+          onCancelJob={cancelJob}
           onCancel={handleCancelSeedSave}
         />
       )}

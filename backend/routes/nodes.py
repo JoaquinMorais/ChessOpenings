@@ -159,6 +159,7 @@ def update_node(
 
     if "evaluation" in fields:
         node.eval_cp, node.eval_mate = evaluation_to_columns(payload.evaluation)
+        node.eval_source = "manual" if payload.evaluation is not None else None
 
     session.add(node)
     session.commit()

@@ -5,6 +5,7 @@ import type { Evaluation } from "../types/evaluation";
 import type { TreeNode } from "../types/node";
 import { formatEvaluation } from "../utils/evaluation";
 import ClassificationBadge from "./ClassificationBadge";
+import EvaluationSourceBadge from "./EvaluationSourceBadge";
 
 interface VariationTreeProps {
   root: TreeNode;
@@ -119,6 +120,7 @@ function Branch({
             {formatEvaluation(node.evaluation)}
           </span>
         )}
+        <EvaluationSourceBadge evaluation={node.evaluation} />
         {node.name && (
           <span className="variation-name"> · {node.name}</span>
         )}

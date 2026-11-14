@@ -34,6 +34,15 @@ export interface OpeningRenamePayload {
 }
 export interface SeedFileResponse {
   path: string;
+  job_id?: string | null;
+  message?: string | null;
+}
+
+export interface SeedSaveOptions {
+  visibility: SeedVisibility;
+  evaluate: boolean;
+  allow_external: boolean;
+  total: number;
 }
 
 export interface OpeningPgnImportPayload {

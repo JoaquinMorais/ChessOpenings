@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import (
     BaseModel,
@@ -16,6 +16,7 @@ class Evaluation(BaseModel):
 
     cp: Optional[StrictInt] = None
     mate: Optional[StrictInt] = None
+    source: Literal["manual", "engine", "llm"] = "manual"
 
     @model_validator(mode="before")
     @classmethod
@@ -26,10 +27,10 @@ class Evaluation(BaseModel):
             raise ValueError(
                 "La evaluacion debe ser un objeto con las claves cp o mate."
             )
-        unknown = set(data) - {"cp", "mate"}
+        unknown = set(data) - {"cp", "mate", "source"}
         if unknown:
             raise ValueError(
-                "La evaluacion solo admite las claves cp o mate."
+                "La evaluacion solo admite las claves cp, mate y source."
             )
         return data
 
@@ -44,7 +45,7 @@ class Evaluation(BaseModel):
 
     @model_validator(mode="after")
     def validate_single_value(self):
-        fields = self.model_fields_set
+        fields = self.model_fields_set.intersection({"cp", "mate"})
         if fields == {"cp"}:
             if self.cp is None or not -9999 <= self.cp <= 9999:
                 raise ValueError(
@@ -63,11 +64,11 @@ class Evaluation(BaseModel):
         return self
 
     @model_serializer
-    def serialize_evaluation(self) -> Optional[dict[str, int]]:
+    def serialize_evaluation(self) -> Optional[dict[str, int | str]]:
         if self.cp is not None:
-            return {"cp": self.cp}
+            return {"cp": self.cp, "source": self.source}
         if self.mate is not None:
-            return {"mate": self.mate}
+            return {"mate": self.mate, "source": self.source}
         return None
 
 

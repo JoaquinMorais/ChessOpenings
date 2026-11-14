@@ -9,6 +9,10 @@ import type {
   SeedFileResponse,
   SeedVisibility,
 } from "../types/opening";
+import type {
+  EvaluationJob,
+  EvaluationStatus,
+} from "../types/evaluation";
 
 export function listOpenings(): Promise<OpeningSummary[]> {
   return apiFetch<OpeningSummary[]>("/openings");
@@ -64,10 +68,31 @@ export function importOpening(
 export function saveOpeningSeed(
   openingId: number,
   visibility: SeedVisibility = "public",
+  options: { evaluate?: boolean; allow_external?: boolean } = {},
 ): Promise<SeedFileResponse> {
   return apiFetch<SeedFileResponse>(`/openings/${openingId}/seed`, {
     method: "POST",
-    body: JSON.stringify({ visibility }),
+    body: JSON.stringify({ visibility, ...options }),
+  });
+}
+
+export function getEvaluationStatus(
+  openingId: number,
+): Promise<EvaluationStatus> {
+  return apiFetch<EvaluationStatus>(
+    `/openings/${openingId}/evaluation-status`,
+  );
+}
+
+export function getEvaluationJob(jobId: string): Promise<EvaluationJob> {
+  return apiFetch<EvaluationJob>(`/jobs/${jobId}`);
+}
+
+export function cancelEvaluationJob(
+  jobId: string,
+): Promise<EvaluationJob> {
+  return apiFetch<EvaluationJob>(`/jobs/${jobId}/cancel`, {
+    method: "POST",
   });
 }
 

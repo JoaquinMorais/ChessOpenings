@@ -15,6 +15,14 @@ services:
   backend:
     build: ./backend
     env_file: .env
+    environment:
+      EVALUATOR: ${EVALUATOR:-stockfish}
+      STOCKFISH_PATH: ${STOCKFISH_PATH:-/usr/games/stockfish}
+      EVAL_MOVETIME_MS: ${EVAL_MOVETIME_MS:-300}
+      LLM_BASE_URL: ${LLM_BASE_URL:-}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_MODEL: ${LLM_MODEL:-}
+      LLM_MIN_INTERVAL_S: ${LLM_MIN_INTERVAL_S:-1.0}
     depends_on:
       db:
         condition: service_healthy
@@ -33,6 +41,9 @@ services:
     build: ./backend
     environment:
       DATABASE_URL: postgresql://postgres:postgres@db:5432/chess_test
+      EVALUATOR: ${EVALUATOR:-stockfish}
+      STOCKFISH_PATH: ${STOCKFISH_PATH:-/usr/games/stockfish}
+      EVAL_MOVETIME_MS: ${EVAL_MOVETIME_MS:-300}
     depends_on:
       db:
         condition: service_healthy

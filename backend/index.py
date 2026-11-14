@@ -6,6 +6,7 @@ from sqlmodel import Session
 
 from config.database import engine, get_session
 from config.migrations import run_migrations
+from routes.evaluation import router as evaluation_router
 from routes.io import router as io_router
 from routes.meta import router as meta_router
 from routes.nodes import router as nodes_router
@@ -35,6 +36,7 @@ app = FastAPI(title="Chess Openings Trainer", lifespan=lifespan)
 app.include_router(openings_router, prefix="/api")
 app.include_router(nodes_router, prefix="/api")
 app.include_router(io_router, prefix="/api")
+app.include_router(evaluation_router, prefix="/api")
 app.include_router(meta_router, prefix="/api")
 app.include_router(training_router, prefix="/api")
 app.include_router(stats_router, prefix="/api")

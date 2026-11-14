@@ -29,6 +29,8 @@ class FavoriteUpdate(BaseModel):
 
 class SeedSaveRequest(BaseModel):
     visibility: Literal["public", "private"]
+    evaluate: bool = False
+    allow_external: bool = False
 
 
 class SeedRestoreRequest(BaseModel):
@@ -44,3 +46,5 @@ class SeedFileInfo(BaseModel):
 
 class SeedFileRead(BaseModel):
     path: str
+    job_id: Optional[str] = None
+    message: Optional[str] = None

@@ -1,0 +1,1324 @@
+{
+  "format": "chess-openings-trainer",
+  "version": 1,
+  "opening": {
+    "name": "Defensa Mate Pastor",
+    "color": "black",
+    "tree": {
+      "evaluation": {
+        "cp": 39,
+        "source": "engine"
+      },
+      "children": [
+        {
+          "san": "e4",
+          "name": null,
+          "comment": null,
+          "classification": null,
+          "evaluation": {
+            "cp": 30,
+            "source": "engine"
+          },
+          "children": [
+            {
+              "san": "e5",
+              "name": null,
+              "comment": null,
+              "classification": null,
+              "evaluation": {
+                "cp": 31,
+                "source": "engine"
+              },
+              "children": [
+                {
+                  "san": "Bc4",
+                  "name": null,
+                  "comment": null,
+                  "classification": null,
+                  "evaluation": {
+                    "cp": -1,
+                    "source": "engine"
+                  },
+                  "children": [
+                    {
+                      "san": "Nc6",
+                      "name": null,
+                      "comment": null,
+                      "classification": null,
+                      "evaluation": {
+                        "cp": 29,
+                        "source": "engine"
+                      },
+                      "children": [
+                        {
+                          "san": "Qh5",
+                          "name": null,
+                          "comment": null,
+                          "classification": null,
+                          "evaluation": {
+                            "cp": -37,
+                            "source": "engine"
+                          },
+                          "children": [
+                            {
+                              "san": "g6",
+                              "name": null,
+                              "comment": null,
+                              "classification": null,
+                              "evaluation": {
+                                "cp": -25,
+                                "source": "engine"
+                              },
+                              "children": [
+                                {
+                                  "san": "Qf3",
+                                  "name": null,
+                                  "comment": null,
+                                  "classification": null,
+                                  "evaluation": {
+                                    "cp": -27,
+                                    "source": "engine"
+                                  },
+                                  "children": [
+                                    {
+                                      "san": "f5",
+                                      "name": null,
+                                      "comment": null,
+                                      "classification": null,
+                                      "evaluation": {
+                                        "cp": -2,
+                                        "source": "engine"
+                                      },
+                                      "children": [
+                                        {
+                                          "san": "exf5",
+                                          "name": null,
+                                          "comment": null,
+                                          "classification": null,
+                                          "evaluation": {
+                                            "cp": -123,
+                                            "source": "engine"
+                                          },
+                                          "children": [
+                                            {
+                                              "san": "Nd4",
+                                              "name": null,
+                                              "comment": null,
+                                              "classification": "great",
+                                              "evaluation": {
+                                                "cp": -114,
+                                                "source": "engine"
+                                              },
+                                              "children": [
+                                                {
+                                                  "san": "Qd1",
+                                                  "name": null,
+                                                  "comment": null,
+                                                  "classification": null,
+                                                  "evaluation": {
+                                                    "cp": -128,
+                                                    "source": "engine"
+                                                  },
+                                                  "children": [
+                                                    {
+                                                      "san": "d5",
+                                                      "name": null,
+                                                      "comment": null,
+                                                      "classification": null,
+                                                      "evaluation": {
+                                                        "cp": -115,
+                                                        "source": "engine"
+                                                      },
+                                                      "children": [
+                                                        {
+                                                          "san": "Bb3",
+                                                          "name": null,
+                                                          "comment": null,
+                                                          "classification": null,
+                                                          "evaluation": {
+                                                            "cp": -106,
+                                                            "source": "engine"
+                                                          },
+                                                          "children": [
+                                                            {
+                                                              "san": "Bxf5",
+                                                              "name": null,
+                                                              "comment": null,
+                                                              "classification": null,
+                                                              "evaluation": {
+                                                                "cp": -100,
+                                                                "source": "engine"
+                                                              },
+                                                              "children": []
+                                                            }
+                                                          ]
+                                                        }
+                                                      ]
+                                                    }
+                                                  ]
+                                                },
+                                                {
+                                                  "san": "Qd5",
+                                                  "name": null,
+                                                  "comment": null,
+                                                  "classification": "mistake",
+                                                  "evaluation": {
+                                                    "cp": -259,
+                                                    "source": "engine"
+                                                  },
+                                                  "children": [
+                                                    {
+                                                      "san": "Qf6",
+                                                      "name": null,
+                                                      "comment": null,
+                                                      "classification": null,
+                                                      "evaluation": {
+                                                        "cp": -238,
+                                                        "source": "engine"
+                                                      },
+                                                      "children": [
+                                                        {
+                                                          "san": "Bb3",
+                                                          "name": null,
+                                                          "comment": null,
+                                                          "classification": null,
+                                                          "evaluation": {
+                                                            "cp": -256,
+                                                            "source": "engine"
+                                                          },
+                                                          "children": [
+                                                            {
+                                                              "san": "Ne7",
+                                                              "name": null,
+                                                              "comment": null,
+                                                              "classification": null,
+                                                              "evaluation": {
+                                                                "cp": -318,
+                                                                "source": "engine"
+                                                              },
+                                                              "children": [
+                                                                {
+                                                                  "san": "Qc4",
+                                                                  "name": null,
+                                                                  "comment": null,
+                                                                  "classification": null,
+                                                                  "evaluation": {
+                                                                    "cp": -332,
+                                                                    "source": "engine"
+                                                                  },
+                                                                  "children": [
+                                                                    {
+                                                                      "san": "d5",
+                                                                      "name": null,
+                                                                      "comment": null,
+                                                                      "classification": "great",
+                                                                      "evaluation": {
+                                                                        "cp": -326,
+                                                                        "source": "engine"
+                                                                      },
+                                                                      "children": [
+                                                                        {
+                                                                          "san": "Qxc7",
+                                                                          "name": null,
+                                                                          "comment": null,
+                                                                          "classification": null,
+                                                                          "evaluation": {
+                                                                            "cp": -354,
+                                                                            "source": "engine"
+                                                                          },
+                                                                          "children": [
+                                                                            {
+                                                                              "san": "Nec6",
+                                                                              "name": null,
+                                                                              "comment": null,
+                                                                              "classification": "great",
+                                                                              "evaluation": {
+                                                                                "cp": -356,
+                                                                                "source": "engine"
+                                                                              },
+                                                                              "children": [
+                                                                                {
+                                                                                  "san": "Nf3",
+                                                                                  "name": null,
+                                                                                  "comment": null,
+                                                                                  "classification": "mistake",
+                                                                                  "evaluation": {
+                                                                                    "cp": -523,
+                                                                                    "source": "engine"
+                                                                                  },
+                                                                                  "children": [
+                                                                                    {
+                                                                                      "san": "Bd6",
+                                                                                      "name": null,
+                                                                                      "comment": null,
+                                                                                      "classification": "great",
+                                                                                      "evaluation": {
+                                                                                        "cp": -432,
+                                                                                        "source": "engine"
+                                                                                      },
+                                                                                      "children": []
+                                                                                    }
+                                                                                  ]
+                                                                                }
+                                                                              ]
+                                                                            }
+                                                                          ]
+                                                                        }
+                                                                      ]
+                                                                    }
+                                                                  ]
+                                                                }
+                                                              ]
+                                                            }
+                                                          ]
+                                                        }
+                                                      ]
+                                                    }
+                                                  ]
+                                                },
+                                                {
+                                                  "san": "Qd3",
+                                                  "name": null,
+                                                  "comment": null,
+                                                  "classification": "mistake",
+                                                  "evaluation": {
+                                                    "cp": -242,
+                                                    "source": "engine"
+                                                  },
+                                                  "children": [
+                                                    {
+                                                      "san": "d5",
+                                                      "name": null,
+                                                      "comment": null,
+                                                      "classification": "great",
+                                                      "evaluation": {
+                                                        "cp": -288,
+                                                        "source": "engine"
+                                                      },
+                                                      "children": [
+                                                        {
+                                                          "san": "Bb3",
+                                                          "name": null,
+                                                          "comment": null,
+                                                          "classification": null,
+                                                          "evaluation": {
+                                                            "cp": -249,
+                                                            "source": "engine"
+                                                          },
+                                                          "children": [
+                                                            {
+                                                              "san": "Bxf5",
+                                                              "name": null,
+                                                              "comment": null,
+                                                              "classification": null,
+                                                              "evaluation": {
+                                                                "cp": -260,
+                                                                "source": "engine"
+                                                              },
+                                                              "children": [
+                                                                {
+                                                                  "san": "Qc3",
+                                                                  "name": null,
+                                                                  "comment": null,
+                                                                  "classification": null,
+                                                                  "evaluation": {
+                                                                    "cp": -403,
+                                                                    "source": "engine"
+                                                                  },
+                                                                  "children": [
+                                                                    {
+                                                                      "san": "a5",
+                                                                      "name": null,
+                                                                      "comment": null,
+                                                                      "classification": "best",
+                                                                      "evaluation": {
+                                                                        "cp": -427,
+                                                                        "source": "engine"
+                                                                      },
+                                                                      "children": [
+                                                                        {
+                                                                          "san": "Nf3",
+                                                                          "name": null,
+                                                                          "comment": null,
+                                                                          "classification": null,
+                                                                          "evaluation": {
+                                                                            "cp": -455,
+                                                                            "source": "engine"
+                                                                          },
+                                                                          "children": [
+                                                                            {
+                                                                              "san": "a4",
+                                                                              "name": null,
+                                                                              "comment": null,
+                                                                              "classification": "great",
+                                                                              "evaluation": {
+                                                                                "cp": -501,
+                                                                                "source": "engine"
+                                                                              },
+                                                                              "children": [
+                                                                                {
+                                                                                  "san": "Nxd4",
+                                                                                  "name": null,
+                                                                                  "comment": null,
+                                                                                  "classification": null,
+                                                                                  "evaluation": {
+                                                                                    "cp": -486,
+                                                                                    "source": "engine"
+                                                                                  },
+                                                                                  "children": [
+                                                                                    {
+                                                                                      "san": "exd4",
+                                                                                      "name": null,
+                                                                                      "comment": null,
+                                                                                      "classification": null,
+                                                                                      "evaluation": {
+                                                                                        "cp": -499,
+                                                                                        "source": "engine"
+                                                                                      },
+                                                                                      "children": [
+                                                                                        {
+                                                                                          "san": "Qxd4",
+                                                                                          "name": null,
+                                                                                          "comment": null,
+                                                                                          "classification": null,
+                                                                                          "evaluation": {
+                                                                                            "cp": -523,
+                                                                                            "source": "engine"
+                                                                                          },
+                                                                                          "children": [
+                                                                                            {
+                                                                                              "san": "Qe7+",
+                                                                                              "name": null,
+                                                                                              "comment": null,
+                                                                                              "classification": "great",
+                                                                                              "evaluation": {
+                                                                                                "cp": -535,
+                                                                                                "source": "engine"
+                                                                                              },
+                                                                                              "children": [
+                                                                                                {
+                                                                                                  "san": "Kd1",
+                                                                                                  "name": null,
+                                                                                                  "comment": null,
+                                                                                                  "classification": null,
+                                                                                                  "evaluation": {
+                                                                                                    "cp": -538,
+                                                                                                    "source": "engine"
+                                                                                                  },
+                                                                                                  "children": [
+                                                                                                    {
+                                                                                                      "san": "axb3",
+                                                                                                      "name": null,
+                                                                                                      "comment": null,
+                                                                                                      "classification": "brilliant",
+                                                                                                      "evaluation": {
+                                                                                                        "cp": -506,
+                                                                                                        "source": "engine"
+                                                                                                      },
+                                                                                                      "children": [
+                                                                                                        {
+                                                                                                          "san": "Qxh8",
+                                                                                                          "name": null,
+                                                                                                          "comment": null,
+                                                                                                          "classification": "blunder",
+                                                                                                          "evaluation": {
+                                                                                                            "mate": -1,
+                                                                                                            "source": "engine"
+                                                                                                          },
+                                                                                                          "children": [
+                                                                                                            {
+                                                                                                              "san": "bxc2#",
+                                                                                                              "name": null,
+                                                                                                              "comment": null,
+                                                                                                              "classification": null,
+                                                                                                              "evaluation": {
+                                                                                                                "cp": -9999,
+                                                                                                                "source": "engine"
+                                                                                                              },
+                                                                                                              "children": []
+                                                                                                            }
+                                                                                                          ]
+                                                                                                        }
+                                                                                                      ]
+                                                                                                    }
+                                                                                                  ]
+                                                                                                }
+                                                                                              ]
+                                                                                            }
+                                                                                          ]
+                                                                                        }
+                                                                                      ]
+                                                                                    }
+                                                                                  ]
+                                                                                }
+                                                                              ]
+                                                                            }
+                                                                          ]
+                                                                        }
+                                                                      ]
+                                                                    }
+                                                                  ]
+                                                                }
+                                                              ]
+                                                            }
+                                                          ]
+                                                        }
+                                                      ]
+                                                    }
+                                                  ]
+                                                },
+                                                {
+                                                  "san": "Qe3",
+                                                  "name": null,
+                                                  "comment": null,
+                                                  "classification": null,
+                                                  "evaluation": {
+                                                    "cp": -654,
+                                                    "source": "engine"
+                                                  },
+                                                  "children": [
+                                                    {
+                                                      "san": "Nxc2+",
+                                                      "name": null,
+                                                      "comment": null,
+                                                      "classification": "great",
+                                                      "evaluation": {
+                                                        "cp": -644,
+                                                        "source": "engine"
+                                                      },
+                                                      "children": [
+                                                        {
+                                                          "san": "Ke2",
+                                                          "name": null,
+                                                          "comment": null,
+                                                          "classification": null,
+                                                          "evaluation": {
+                                                            "cp": -644,
+                                                            "source": "engine"
+                                                          },
+                                                          "children": [
+                                                            {
+                                                              "san": "Nxe3",
+                                                              "name": null,
+                                                              "comment": null,
+                                                              "classification": null,
+                                                              "evaluation": {
+                                                                "cp": -645,
+                                                                "source": "engine"
+                                                              },
+                                                              "children": []
+                                                            }
+                                                          ]
+                                                        }
+                                                      ]
+                                                    }
+                                                  ]
+                                                }
+                                              ]
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "san": "Qf3",
+                          "name": null,
+                          "comment": null,
+                          "classification": null,
+                          "evaluation": {
+                            "cp": -28,
+                            "source": "engine"
+                          },
+                          "children": [
+                            {
+                              "san": "f5",
+                              "name": null,
+                              "comment": null,
+                              "classification": null,
+                              "evaluation": {
+                                "cp": 11,
+                                "source": "engine"
+                              },
+                              "children": [
+                                {
+                                  "san": "Qxf5",
+                                  "name": null,
+                                  "comment": null,
+                                  "classification": null,
+                                  "evaluation": {
+                                    "cp": -408,
+                                    "source": "engine"
+                                  },
+                                  "children": [
+                                    {
+                                      "san": "d5",
+                                      "name": null,
+                                      "comment": null,
+                                      "classification": "great",
+                                      "evaluation": {
+                                        "cp": -407,
+                                        "source": "engine"
+                                      },
+                                      "children": [
+                                        {
+                                          "san": "Bxd5",
+                                          "name": null,
+                                          "comment": null,
+                                          "classification": null,
+                                          "evaluation": {
+                                            "cp": -527,
+                                            "source": "engine"
+                                          },
+                                          "children": [
+                                            {
+                                              "san": "Bxf5",
+                                              "name": null,
+                                              "comment": null,
+                                              "classification": "great",
+                                              "evaluation": {
+                                                "cp": -514,
+                                                "source": "engine"
+                                              },
+                                              "children": []
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "san": "Qh5+",
+                                          "name": null,
+                                          "comment": null,
+                                          "classification": null,
+                                          "evaluation": {
+                                            "cp": -420,
+                                            "source": "engine"
+                                          },
+                                          "children": [
+                                            {
+                                              "san": "g6",
+                                              "name": null,
+                                              "comment": null,
+                                              "classification": "great",
+                                              "evaluation": {
+                                                "cp": -410,
+                                                "source": "engine"
+                                              },
+                                              "children": [
+                                                {
+                                                  "san": "Qe2",
+                                                  "name": null,
+                                                  "comment": null,
+                                                  "classification": null,
+                                                  "evaluation": {
+                                                    "cp": -386,
+                                                    "source": "engine"
+                                                  },
+                                                  "children": [
+                                                    {
+                                                      "san": "Nd4",
+                                                      "name": null,
+                                                      "comment": null,
+                                                      "classification": "great",
+                                                      "evaluation": {
+                                                        "cp": -387,
+                                                        "source": "engine"
+                                                      },
+                                                      "children": [
+                                                        {
+                                                          "san": "Qd3",
+                                                          "name": null,
+                                                          "comment": null,
+                                                          "classification": null,
+                                                          "evaluation": {
+                                                            "cp": -501,
+                                                            "source": "engine"
+                                                          },
+                                                          "children": [
+                                                            {
+                                                              "san": "dxc4",
+                                                              "name": null,
+                                                              "comment": null,
+                                                              "classification": "best",
+                                                              "evaluation": {
+                                                                "cp": -486,
+                                                                "source": "engine"
+                                                              },
+                                                              "children": [
+                                                                {
+                                                                  "san": "Qxc4",
+                                                                  "name": null,
+                                                                  "comment": null,
+                                                                  "classification": null,
+                                                                  "evaluation": {
+                                                                    "cp": -498,
+                                                                    "source": "engine"
+                                                                  },
+                                                                  "children": [
+                                                                    {
+                                                                      "san": "Be6",
+                                                                      "name": null,
+                                                                      "comment": null,
+                                                                      "classification": "best",
+                                                                      "evaluation": {
+                                                                        "cp": -499,
+                                                                        "source": "engine"
+                                                                      },
+                                                                      "children": [
+                                                                        {
+                                                                          "san": "Qa4+",
+                                                                          "name": null,
+                                                                          "comment": null,
+                                                                          "classification": null,
+                                                                          "evaluation": {
+                                                                            "cp": -675,
+                                                                            "source": "engine"
+                                                                          },
+                                                                          "children": [
+                                                                            {
+                                                                              "san": "b5",
+                                                                              "name": null,
+                                                                              "comment": null,
+                                                                              "classification": "best",
+                                                                              "evaluation": {
+                                                                                "cp": -691,
+                                                                                "source": "engine"
+                                                                              },
+                                                                              "children": [
+                                                                                {
+                                                                                  "san": "Qa6",
+                                                                                  "name": null,
+                                                                                  "comment": null,
+                                                                                  "classification": null,
+                                                                                  "evaluation": {
+                                                                                    "cp": -711,
+                                                                                    "source": "engine"
+                                                                                  },
+                                                                                  "children": [
+                                                                                    {
+                                                                                      "san": "Bc8",
+                                                                                      "name": null,
+                                                                                      "comment": null,
+                                                                                      "classification": "great",
+                                                                                      "evaluation": {
+                                                                                        "cp": -728,
+                                                                                        "source": "engine"
+                                                                                      },
+                                                                                      "children": [
+                                                                                        {
+                                                                                          "san": "Qa5",
+                                                                                          "name": null,
+                                                                                          "comment": null,
+                                                                                          "classification": null,
+                                                                                          "evaluation": {
+                                                                                            "cp": -733,
+                                                                                            "source": "engine"
+                                                                                          },
+                                                                                          "children": [
+                                                                                            {
+                                                                                              "san": "Bb4",
+                                                                                              "name": null,
+                                                                                              "comment": null,
+                                                                                              "classification": "brilliant",
+                                                                                              "evaluation": {
+                                                                                                "cp": -742,
+                                                                                                "source": "engine"
+                                                                                              },
+                                                                                              "children": [
+                                                                                                {
+                                                                                                  "san": "Qxb4",
+                                                                                                  "name": null,
+                                                                                                  "comment": null,
+                                                                                                  "classification": null,
+                                                                                                  "evaluation": {
+                                                                                                    "cp": -775,
+                                                                                                    "source": "engine"
+                                                                                                  },
+                                                                                                  "children": [
+                                                                                                    {
+                                                                                                      "san": "Nxc2+",
+                                                                                                      "name": null,
+                                                                                                      "comment": null,
+                                                                                                      "classification": "great",
+                                                                                                      "evaluation": {
+                                                                                                        "cp": -794,
+                                                                                                        "source": "engine"
+                                                                                                      },
+                                                                                                      "children": [
+                                                                                                        {
+                                                                                                          "san": "Kd1",
+                                                                                                          "name": null,
+                                                                                                          "comment": null,
+                                                                                                          "classification": null,
+                                                                                                          "evaluation": {
+                                                                                                            "cp": -786,
+                                                                                                            "source": "engine"
+                                                                                                          },
+                                                                                                          "children": [
+                                                                                                            {
+                                                                                                              "san": "Nxb4",
+                                                                                                              "name": null,
+                                                                                                              "comment": null,
+                                                                                                              "classification": "great",
+                                                                                                              "evaluation": {
+                                                                                                                "cp": -801,
+                                                                                                                "source": "engine"
+                                                                                                              },
+                                                                                                              "children": []
+                                                                                                            }
+                                                                                                          ]
+                                                                                                        }
+                                                                                                      ]
+                                                                                                    }
+                                                                                                  ]
+                                                                                                }
+                                                                                              ]
+                                                                                            }
+                                                                                          ]
+                                                                                        }
+                                                                                      ]
+                                                                                    }
+                                                                                  ]
+                                                                                }
+                                                                              ]
+                                                                            }
+                                                                          ]
+                                                                        }
+                                                                      ]
+                                                                    }
+                                                                  ]
+                                                                }
+                                                              ]
+                                                            }
+                                                          ]
+                                                        }
+                                                      ]
+                                                    }
+                                                  ]
+                                                }
+                                              ]
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                },
+                                {
+                                  "san": "exf5",
+                                  "name": null,
+                                  "comment": null,
+                                  "classification": null,
+                                  "evaluation": {
+                                    "cp": -68,
+                                    "source": "engine"
+                                  },
+                                  "children": [
+                                    {
+                                      "san": "Nf6",
+                                      "name": null,
+                                      "comment": null,
+                                      "classification": "great",
+                                      "evaluation": {
+                                        "cp": -83,
+                                        "source": "engine"
+                                      },
+                                      "children": [
+                                        {
+                                          "san": "d3",
+                                          "name": null,
+                                          "comment": null,
+                                          "classification": null,
+                                          "evaluation": {
+                                            "cp": -172,
+                                            "source": "engine"
+                                          },
+                                          "children": [
+                                            {
+                                              "san": "Nd4",
+                                              "name": null,
+                                              "comment": null,
+                                              "classification": "great",
+                                              "evaluation": {
+                                                "cp": -170,
+                                                "source": "engine"
+                                              },
+                                              "children": [
+                                                {
+                                                  "san": "Qd1",
+                                                  "name": null,
+                                                  "comment": null,
+                                                  "classification": null,
+                                                  "evaluation": {
+                                                    "cp": -184,
+                                                    "source": "engine"
+                                                  },
+                                                  "children": [
+                                                    {
+                                                      "san": "d5",
+                                                      "name": null,
+                                                      "comment": null,
+                                                      "classification": "great",
+                                                      "evaluation": {
+                                                        "cp": -172,
+                                                        "source": "engine"
+                                                      },
+                                                      "children": []
+                                                    }
+                                                  ]
+                                                }
+                                              ]
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "san": "g4",
+                                          "name": null,
+                                          "comment": null,
+                                          "classification": null,
+                                          "evaluation": {
+                                            "cp": -215,
+                                            "source": "engine"
+                                          },
+                                          "children": [
+                                            {
+                                              "san": "Nd4",
+                                              "name": null,
+                                              "comment": null,
+                                              "classification": null,
+                                              "evaluation": {
+                                                "cp": -238,
+                                                "source": "engine"
+                                              },
+                                              "children": [
+                                                {
+                                                  "san": "Qd1",
+                                                  "name": null,
+                                                  "comment": null,
+                                                  "classification": null,
+                                                  "evaluation": {
+                                                    "cp": -229,
+                                                    "source": "engine"
+                                                  },
+                                                  "children": [
+                                                    {
+                                                      "san": "b5",
+                                                      "name": null,
+                                                      "comment": null,
+                                                      "classification": "great",
+                                                      "evaluation": {
+                                                        "cp": -208,
+                                                        "source": "engine"
+                                                      },
+                                                      "children": [
+                                                        {
+                                                          "san": "Bb3",
+                                                          "name": null,
+                                                          "comment": null,
+                                                          "classification": null,
+                                                          "evaluation": {
+                                                            "cp": -412,
+                                                            "source": "engine"
+                                                          },
+                                                          "children": [
+                                                            {
+                                                              "san": "Bb7",
+                                                              "name": null,
+                                                              "comment": null,
+                                                              "classification": "great",
+                                                              "evaluation": {
+                                                                "cp": -416,
+                                                                "source": "engine"
+                                                              },
+                                                              "children": [
+                                                                {
+                                                                  "san": "Nf3",
+                                                                  "name": null,
+                                                                  "comment": null,
+                                                                  "classification": "blunder",
+                                                                  "evaluation": {
+                                                                    "cp": -673,
+                                                                    "source": "engine"
+                                                                  },
+                                                                  "children": [
+                                                                    {
+                                                                      "san": "Bxf3",
+                                                                      "name": null,
+                                                                      "comment": null,
+                                                                      "classification": null,
+                                                                      "evaluation": {
+                                                                        "cp": -701,
+                                                                        "source": "engine"
+                                                                      },
+                                                                      "children": []
+                                                                    }
+                                                                  ]
+                                                                },
+                                                                {
+                                                                  "san": "f3",
+                                                                  "name": null,
+                                                                  "comment": null,
+                                                                  "classification": null,
+                                                                  "evaluation": {
+                                                                    "cp": -456,
+                                                                    "source": "engine"
+                                                                  },
+                                                                  "children": [
+                                                                    {
+                                                                      "san": "Nxg4",
+                                                                      "name": null,
+                                                                      "comment": null,
+                                                                      "classification": "brilliant",
+                                                                      "evaluation": {
+                                                                        "cp": -458,
+                                                                        "source": "engine"
+                                                                      },
+                                                                      "children": [
+                                                                        {
+                                                                          "san": "fxg4",
+                                                                          "name": null,
+                                                                          "comment": null,
+                                                                          "classification": null,
+                                                                          "evaluation": {
+                                                                            "cp": -605,
+                                                                            "source": "engine"
+                                                                          },
+                                                                          "children": [
+                                                                            {
+                                                                              "san": "Qh4+",
+                                                                              "name": null,
+                                                                              "comment": null,
+                                                                              "classification": null,
+                                                                              "evaluation": {
+                                                                                "cp": -566,
+                                                                                "source": "engine"
+                                                                              },
+                                                                              "children": [
+                                                                                {
+                                                                                  "san": "Kf1",
+                                                                                  "name": null,
+                                                                                  "comment": null,
+                                                                                  "classification": null,
+                                                                                  "evaluation": {
+                                                                                    "cp": -621,
+                                                                                    "source": "engine"
+                                                                                  },
+                                                                                  "children": [
+                                                                                    {
+                                                                                      "san": "Bc5",
+                                                                                      "name": null,
+                                                                                      "comment": null,
+                                                                                      "classification": null,
+                                                                                      "evaluation": {
+                                                                                        "cp": -586,
+                                                                                        "source": "engine"
+                                                                                      },
+                                                                                      "children": [
+                                                                                        {
+                                                                                          "san": "d3",
+                                                                                          "name": null,
+                                                                                          "comment": null,
+                                                                                          "classification": null,
+                                                                                          "evaluation": {
+                                                                                            "cp": -613,
+                                                                                            "source": "engine"
+                                                                                          },
+                                                                                          "children": [
+                                                                                            {
+                                                                                              "san": "Nxb3",
+                                                                                              "name": null,
+                                                                                              "comment": null,
+                                                                                              "classification": null,
+                                                                                              "evaluation": {
+                                                                                                "cp": -646,
+                                                                                                "source": "engine"
+                                                                                              },
+                                                                                              "children": [
+                                                                                                {
+                                                                                                  "san": "axb3",
+                                                                                                  "name": null,
+                                                                                                  "comment": null,
+                                                                                                  "classification": null,
+                                                                                                  "evaluation": {
+                                                                                                    "mate": -1,
+                                                                                                    "source": "engine"
+                                                                                                  },
+                                                                                                  "children": [
+                                                                                                    {
+                                                                                                      "san": "Qf2#",
+                                                                                                      "name": null,
+                                                                                                      "comment": null,
+                                                                                                      "classification": "best",
+                                                                                                      "evaluation": {
+                                                                                                        "cp": -9999,
+                                                                                                        "source": "engine"
+                                                                                                      },
+                                                                                                      "children": []
+                                                                                                    }
+                                                                                                  ]
+                                                                                                }
+                                                                                              ]
+                                                                                            }
+                                                                                          ]
+                                                                                        }
+                                                                                      ]
+                                                                                    }
+                                                                                  ]
+                                                                                }
+                                                                              ]
+                                                                            }
+                                                                          ]
+                                                                        }
+                                                                      ]
+                                                                    }
+                                                                  ]
+                                                                }
+                                                              ]
+                                                            }
+                                                          ]
+                                                        }
+                                                      ]
+                                                    }
+                                                  ]
+                                                }
+                                              ]
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                },
+                                {
+                                  "san": "Bxg8",
+                                  "name": null,
+                                  "comment": null,
+                                  "classification": null,
+                                  "evaluation": {
+                                    "cp": -62,
+                                    "source": "engine"
+                                  },
+                                  "children": [
+                                    {
+                                      "san": "Nd4",
+                                      "name": null,
+                                      "comment": null,
+                                      "classification": "great",
+                                      "evaluation": {
+                                        "cp": -67,
+                                        "source": "engine"
+                                      },
+                                      "children": [
+                                        {
+                                          "san": "Qxf5",
+                                          "name": null,
+                                          "comment": null,
+                                          "classification": "blunder",
+                                          "evaluation": {
+                                            "cp": -540,
+                                            "source": "engine"
+                                          },
+                                          "children": [
+                                            {
+                                              "san": "Nxf5",
+                                              "name": null,
+                                              "comment": null,
+                                              "classification": null,
+                                              "evaluation": {
+                                                "cp": -534,
+                                                "source": "engine"
+                                              },
+                                              "children": []
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "san": "Qd3",
+                                          "name": null,
+                                          "comment": null,
+                                          "classification": null,
+                                          "evaluation": {
+                                            "cp": -113,
+                                            "source": "engine"
+                                          },
+                                          "children": [
+                                            {
+                                              "san": "Rxg8",
+                                              "name": null,
+                                              "comment": null,
+                                              "classification": null,
+                                              "evaluation": {
+                                                "cp": -1,
+                                                "source": "engine"
+                                              },
+                                              "children": [
+                                                {
+                                                  "san": "exf5",
+                                                  "name": null,
+                                                  "comment": null,
+                                                  "classification": null,
+                                                  "evaluation": {
+                                                    "cp": -187,
+                                                    "source": "engine"
+                                                  },
+                                                  "children": [
+                                                    {
+                                                      "san": "d5",
+                                                      "name": null,
+                                                      "comment": null,
+                                                      "classification": null,
+                                                      "evaluation": {
+                                                        "cp": -205,
+                                                        "source": "engine"
+                                                      },
+                                                      "children": [
+                                                        {
+                                                          "san": "c3",
+                                                          "name": null,
+                                                          "comment": null,
+                                                          "classification": null,
+                                                          "evaluation": {
+                                                            "cp": -432,
+                                                            "source": "engine"
+                                                          },
+                                                          "children": [
+                                                            {
+                                                              "san": "Bxf5",
+                                                              "name": null,
+                                                              "comment": null,
+                                                              "classification": "great",
+                                                              "evaluation": {
+                                                                "cp": -451,
+                                                                "source": "engine"
+                                                              },
+                                                              "children": [
+                                                                {
+                                                                  "san": "Qe3",
+                                                                  "name": null,
+                                                                  "comment": null,
+                                                                  "classification": "blunder",
+                                                                  "evaluation": {
+                                                                    "cp": -739,
+                                                                    "source": "engine"
+                                                                  },
+                                                                  "children": [
+                                                                    {
+                                                                      "san": "Nc2+",
+                                                                      "name": null,
+                                                                      "comment": null,
+                                                                      "classification": "great",
+                                                                      "evaluation": {
+                                                                        "cp": -772,
+                                                                        "source": "engine"
+                                                                      },
+                                                                      "children": []
+                                                                    }
+                                                                  ]
+                                                                },
+                                                                {
+                                                                  "san": "Qg3",
+                                                                  "name": null,
+                                                                  "comment": null,
+                                                                  "classification": null,
+                                                                  "evaluation": {
+                                                                    "cp": -459,
+                                                                    "source": "engine"
+                                                                  },
+                                                                  "children": [
+                                                                    {
+                                                                      "san": "Nc2+",
+                                                                      "name": null,
+                                                                      "comment": null,
+                                                                      "classification": null,
+                                                                      "evaluation": {
+                                                                        "cp": -436,
+                                                                        "source": "engine"
+                                                                      },
+                                                                      "children": [
+                                                                        {
+                                                                          "san": "Kd1",
+                                                                          "name": null,
+                                                                          "comment": null,
+                                                                          "classification": null,
+                                                                          "evaluation": {
+                                                                            "cp": -460,
+                                                                            "source": "engine"
+                                                                          },
+                                                                          "children": [
+                                                                            {
+                                                                              "san": "Bd6",
+                                                                              "name": null,
+                                                                              "comment": null,
+                                                                              "classification": null,
+                                                                              "evaluation": {
+                                                                                "cp": -476,
+                                                                                "source": "engine"
+                                                                              },
+                                                                              "children": [
+                                                                                {
+                                                                                  "san": "d4",
+                                                                                  "name": null,
+                                                                                  "comment": null,
+                                                                                  "classification": null,
+                                                                                  "evaluation": {
+                                                                                    "cp": -513,
+                                                                                    "source": "engine"
+                                                                                  },
+                                                                                  "children": [
+                                                                                    {
+                                                                                      "san": "Nxa1",
+                                                                                      "name": null,
+                                                                                      "comment": null,
+                                                                                      "classification": null,
+                                                                                      "evaluation": {
+                                                                                        "cp": -492,
+                                                                                        "source": "engine"
+                                                                                      },
+                                                                                      "children": []
+                                                                                    }
+                                                                                  ]
+                                                                                }
+                                                                              ]
+                                                                            }
+                                                                          ]
+                                                                        }
+                                                                      ]
+                                                                    }
+                                                                  ]
+                                                                }
+                                                              ]
+                                                            }
+                                                          ]
+                                                        }
+                                                      ]
+                                                    }
+                                                  ]
+                                                }
+                                              ]
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

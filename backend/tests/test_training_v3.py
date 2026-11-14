@@ -204,7 +204,7 @@ def test_api_training_steps_include_evaluation_and_metadata(client: TestClient):
     ).json()
     step = session["step"]
     assert step["node_id"] == ids["root"]
-    assert step["evaluation"] == {"cp": 20}
+    assert step["evaluation"] == {"cp": 20, "source": "manual"}
 
     response = client.post(
         f"{SESSIONS}/{session['id']}/answer",
@@ -218,16 +218,16 @@ def test_api_training_steps_include_evaluation_and_metadata(client: TestClient):
         "name": "Salida",
         "comment": "Comentario e4",
         "classification": "book",
-        "evaluation": {"cp": 30},
+        "evaluation": {"cp": 30, "source": "manual"},
     }
 
     next_step = answer_data["next_step"]
     assert next_step["node_id"] == ids["e5"]
-    assert next_step["evaluation"] == {"cp": -20}
-    assert next_step["lead_in"][0]["evaluation"] == {"cp": 30}
+    assert next_step["evaluation"] == {"cp": -20, "source": "manual"}
+    assert next_step["lead_in"][0]["evaluation"] == {"cp": 30, "source": "manual"}
     assert next_step["lead_in"][0]["name"] == "Salida"
     assert next_step["lead_in"][0]["classification"] == "book"
-    assert next_step["lead_in"][1]["evaluation"] == {"cp": -20}
+    assert next_step["lead_in"][1]["evaluation"] == {"cp": -20, "source": "manual"}
     assert next_step["lead_in"][1]["name"] == "Respuesta"
     assert next_step["lead_in"][1]["classification"] == "mistake"
 
@@ -277,10 +277,10 @@ def test_old_session_state_is_hydrated_from_current_tree(
     assert recovered.status_code == 200
     step = recovered.json()["step"]
     assert step["node_id"] == ids["e5"]
-    assert step["evaluation"] == {"cp": -20}
-    assert step["lead_in"][0]["evaluation"] == {"cp": 30}
+    assert step["evaluation"] == {"cp": -20, "source": "manual"}
+    assert step["lead_in"][0]["evaluation"] == {"cp": 30, "source": "manual"}
     assert step["lead_in"][0]["name"] == "Salida"
-    assert step["lead_in"][1]["evaluation"] == {"cp": -20}
+    assert step["lead_in"][1]["evaluation"] == {"cp": -20, "source": "manual"}
     assert step["lead_in"][1]["name"] == "Respuesta"
 
     response = client.post(
@@ -295,13 +295,13 @@ def test_old_session_state_is_hydrated_from_current_tree(
         "name": "Desarrollo",
         "comment": "Comentario Nf3",
         "classification": "best",
-        "evaluation": {"cp": 40},
+        "evaluation": {"cp": 40, "source": "manual"},
     }
 
     session.expire_all()
     persisted = session.get(TrainingSession, created["id"])
-    assert persisted.state["tree"]["children"][0]["evaluation"] == {"cp": 30}
+    assert persisted.state["tree"]["children"][0]["evaluation"] == {"cp": 30, "source": "manual"}
     assert (
         persisted.state["last_step"]["lead_in"][-1]["evaluation"]
-        == {"cp": 50}
+        == {"cp": 50, "source": "manual"}
     ), persisted.state["last_step"]

@@ -1,5 +1,7 @@
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 
+import { EvaluationJobsProvider } from "../contexts/EvaluationJobsContext";
+
 function Layout() {
   const location = useLocation();
   const isTraining = /\/openings\/[^/]+\/train$/.test(location.pathname);
@@ -23,11 +25,13 @@ function Layout() {
           <NavLink to="/stats">Estadísticas</NavLink>
         </nav>
       </header>
-      <main
-        className={isTraining ? "app-main app-main--training" : "app-main"}
-      >
-        <Outlet />
-      </main>
+      <EvaluationJobsProvider>
+        <main
+          className={isTraining ? "app-main app-main--training" : "app-main"}
+        >
+          <Outlet />
+        </main>
+      </EvaluationJobsProvider>
     </div>
   );
 }

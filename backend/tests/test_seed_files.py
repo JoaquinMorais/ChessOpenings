@@ -108,7 +108,9 @@ def test_seed_endpoints_and_visibility(
     assert response.status_code == 200
     public_path = seed_file_path("API Seed", seed_dir)
     assert response.json() == {
-        "path": f"data/seed_import/public/{public_path.name}"
+        "path": f"data/seed_import/public/{public_path.name}",
+        "job_id": None,
+        "message": None,
     }
     assert public_path.is_file()
 

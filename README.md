@@ -14,7 +14,7 @@ Aplicación **local** para crear, entrenar, exportar e importar repertorios de a
 
 - Docker
 - Docker Compose v2
-- Puertos libres: `3000` (frontend) y `8000` (backend). PostgreSQL no se expone al host.
+- Puertos libres: `3000` (frontend) y `8013` (backend, configurable con `BACKEND_HOST_PORT`). PostgreSQL no se expone al host.
 
 No hace falta tener Python, Node ni PostgreSQL instalados localmente.
 
@@ -41,9 +41,9 @@ Al arrancar con una base vacía se carga `backend/data/seed.json`:
 ## URLs
 
 - Aplicación: http://localhost:3000
-- API: http://localhost:8000/api
-- Documentación interactiva: http://localhost:8000/docs
-- Health check: http://localhost:8000/api/health
+- API: http://localhost:8013/api
+- Documentación interactiva: http://localhost:8013/docs
+- Health check: http://localhost:8013/api/health
 
 ## Cómo correr los tests
 

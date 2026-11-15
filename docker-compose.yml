@@ -30,7 +30,7 @@ services:
       - ./backend/data:/app/data
       - ./.gitignore:/repo-root/.gitignore:ro
     ports:
-      - "8000:8000"
+      - "${BACKEND_HOST_PORT:-8013}:8000"
   frontend:
     build: ./frontend
     depends_on:

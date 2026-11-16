@@ -13,7 +13,17 @@ class PositionStatRead(BaseModel):
     last_practiced_at: Optional[datetime] = None
 
 
+class TrainingSessionSummaryRead(BaseModel):
+    id: int
+    started_at: datetime
+    finished_at: datetime
+    questions_total: int
+    first_try_correct: int
+    accuracy: float
+
+
 class OpeningStatsRead(BaseModel):
     opening_id: int
     accuracy: Optional[float] = None
     positions: List[PositionStatRead]
+    sessions: List[TrainingSessionSummaryRead] = []

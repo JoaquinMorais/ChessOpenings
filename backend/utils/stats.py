@@ -4,7 +4,7 @@ from sqlmodel import Session, select
 
 from models.node import Node
 from models.opening import Opening
-from models.training import PositionStat
+from models.training import PositionStat, TrainingSession
 
 
 def _format_move_path(moves: List[str]) -> str:
@@ -47,6 +47,34 @@ def opening_stats(session: Session, opening_id: int) -> Dict[str, Any]:
     total_correct = sum(stat.correct for stat in stats)
     accuracy = total_correct / total_attempts * 100 if total_attempts else None
 
+    training_sessions = session.exec(
+        select(TrainingSession)
+        .where(
+            TrainingSession.opening_id == opening_id,
+            TrainingSession.finished_at.is_not(None),
+        )
+        .order_by(TrainingSession.finished_at, TrainingSession.id)
+    ).all()
+
+    session_summaries = []
+    for training_session in training_sessions:
+        total = training_session.questions_total
+        session_accuracy = (
+            round(training_session.first_try_correct / total * 100, 2)
+            if total
+            else 0.0
+        )
+        session_summaries.append(
+            {
+                "id": training_session.id,
+                "started_at": training_session.started_at,
+                "finished_at": training_session.finished_at,
+                "questions_total": total,
+                "first_try_correct": training_session.first_try_correct,
+                "accuracy": session_accuracy,
+            }
+        )
+
     positions = []
     for stat in stats:
         position_accuracy = (
@@ -67,4 +95,5 @@ def opening_stats(session: Session, opening_id: int) -> Dict[str, Any]:
         "opening_id": opening_id,
         "accuracy": accuracy,
         "positions": positions,
+        "sessions": session_summaries,
     }

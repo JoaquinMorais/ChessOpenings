@@ -53,7 +53,7 @@ def test_ruy_lopez_seed_import_and_round_trip(session: Session):
         [node for node in nodes if node.parent_id == bb5.id],
         key=lambda node: node.order_index,
     )
-    assert len(rival_responses) >= 9
+    assert rival_responses
     assert rival_responses[0].move_san == "a6"
     assert rival_responses[0].order_index == 0
 

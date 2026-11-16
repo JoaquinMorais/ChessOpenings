@@ -208,6 +208,8 @@ function TrainingPage() {
 
   const canPickUp =
     phase === "question" || (phase === "animating" && preparingPickup);
+  const canAnswer =
+    phase === "question" || (phase === "animating" && preparingPickup);
 
   const runStep = useCallback(
     async (nextStep: TrainingStep) => {
@@ -485,7 +487,7 @@ function TrainingPage() {
 
   const handleMove = (move: BoardMove): boolean => {
     if (
-      phase !== "question" ||
+      !canAnswer ||
       !step ||
       step.kind !== "question" ||
       sessionId === null
@@ -494,6 +496,9 @@ function TrainingPage() {
     }
 
     const question = step;
+    if (phase === "animating") {
+      animationTokenRef.current += 1;
+    }
     const uci =
       typeof move === "string"
         ? move
@@ -710,7 +715,7 @@ function TrainingPage() {
             <ChessBoardView
               fen={boardFen}
               orientation={orientation}
-              disabled={phase !== "question"}
+              disabled={!canAnswer}
               pickupEnabled={canPickUp}
               lastMove={lastMove}
               badge={showClassifications ? boardBadge : null}

@@ -3,6 +3,7 @@ import { Link, useParams, useSearchParams } from "react-router-dom";
 import { Chess, type Move } from "chess.js";
 
 import { ApiError } from "../api/client";
+import { playPieceSound } from "../utils/sound";
 import { getOpening } from "../api/openings";
 import {
   answerTrainingSession,
@@ -259,6 +260,17 @@ function TrainingPage() {
         setBoardFen(game.fen());
         setLastMove(uciToLastMove(move.uci));
         setBoardEvaluation(move.evaluation ?? null);
+        if (!move.fast_forward) {
+          const isCapture =
+            applied.flags.includes("c") || applied.flags.includes("e");
+          playPieceSound(
+            move.classification === "brilliant"
+              ? "brilliant"
+              : isCapture
+                ? "capture"
+                : "move",
+          );
+        }
 
         const moveIsWhite = index % 2 === 0;
         const isRivalMove = moveIsWhite === rivalIsWhite;
@@ -435,6 +447,9 @@ function TrainingPage() {
       });
       setAnsweredMoveInfo(result.correct_move);
       setBoardEvaluation(result.correct_move.evaluation ?? null);
+      if (result.correct_move.classification === "brilliant") {
+        playPieceSound("brilliant");
+      }
       const correctMoveSquare = result.correct
         ? uciToLastMove(uci)?.to ?? null
         : uciToLastMove(result.correct_move_uci)?.to ?? null;
@@ -523,6 +538,11 @@ function TrainingPage() {
     setError(null);
     setHintSquare(null);
     setPreparingPickup(false);
+    playPieceSound(
+      applied.flags.includes("c") || applied.flags.includes("e")
+        ? "capture"
+        : "move",
+    );
     setPhase("answering");
     void submitAnswer(sessionId, question, uci, hintUsed);
     return true;
@@ -696,7 +716,11 @@ function TrainingPage() {
   }
 
   return (
-    <section className="page training-page">
+    <section
+      className={`page training-page${
+        phase === "incorrect" ? " training-page--incorrect" : ""
+      }`}
+    >
       <div className="training-layout">
         <div className="training-board">
           <div
@@ -800,7 +824,10 @@ function TrainingPage() {
           )}
 
           {phase === "incorrect" && feedback && (
-            <div className="alert" role="alert">
+            <div
+              className="alert training-feedback-alert"
+              role="alert"
+            >
               <p>
                 <strong>Incorrecto.</strong> La jugada correcta es{" "}
                 <code>{feedback.correctSan}</code>.
@@ -872,6 +899,22 @@ function TrainingPage() {
           </section>
         </aside>
       </div>
+
+      {phase === "incorrect" && feedback && (
+        <div className="training-mobile-action" role="alert">
+          <div>
+            <strong>Incorrecto.</strong> La jugada correcta es{" "}
+            <code>{feedback.correctSan}</code>.
+          </div>
+          <button
+            type="button"
+            className="button"
+            onClick={handleContinue}
+          >
+            Continuar
+          </button>
+        </div>
+      )}
     </section>
   );
 }

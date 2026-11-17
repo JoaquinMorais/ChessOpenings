@@ -200,6 +200,7 @@ def create_training_session(
     state["last_step"] = step
     training_session = TrainingSession(
         opening_id=opening_id,
+        mode=mode,
         state=state,
         questions_total=state["questions_total"],
         first_try_correct=0,

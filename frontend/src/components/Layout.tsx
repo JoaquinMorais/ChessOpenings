@@ -1,6 +1,7 @@
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 
 import { EvaluationJobsProvider } from "../contexts/EvaluationJobsContext";
+import SoundControl from "./SoundControl";
 
 function Layout() {
   const location = useLocation();
@@ -24,6 +25,7 @@ function Layout() {
           <NavLink to="/training">Entrenar</NavLink>
           <NavLink to="/stats">Estadísticas</NavLink>
         </nav>
+        <SoundControl />
       </header>
       <EvaluationJobsProvider>
         <main

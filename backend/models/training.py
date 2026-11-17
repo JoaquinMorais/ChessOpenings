@@ -8,6 +8,7 @@ from sqlmodel import Field, SQLModel
 class TrainingSession(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     opening_id: int = Field(foreign_key="opening.id", ondelete="CASCADE")
+    mode: str = Field(default="full")
     started_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     finished_at: Optional[datetime] = None
     questions_total: int = 0

@@ -52,6 +52,7 @@ def opening_stats(session: Session, opening_id: int) -> Dict[str, Any]:
         .where(
             TrainingSession.opening_id == opening_id,
             TrainingSession.finished_at.is_not(None),
+            TrainingSession.mode == "full",
         )
         .order_by(TrainingSession.finished_at, TrainingSession.id)
     ).all()

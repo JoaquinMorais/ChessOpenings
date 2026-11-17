@@ -81,6 +81,7 @@ def test_weak_mode_filters_questions(session: Session):
     training_session, step = create_training_session(
         session, opening.id, mode="weak"
     )
+    assert training_session.mode == "weak"
 
     assert training_session.questions_total == 3
     assert step["kind"] == "question"

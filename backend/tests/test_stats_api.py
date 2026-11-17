@@ -64,6 +64,17 @@ def test_stats_only_completed_sessions_in_order(
             state={},
         )
     )
+    session.add(
+        TrainingSession(
+            opening_id=opening["id"],
+            mode="weak",
+            started_at=base,
+            finished_at=base.replace(hour=14),
+            questions_total=5,
+            first_try_correct=5,
+            state={},
+        )
+    )
     session.commit()
 
     response = client.get(f"{OPENINGS}/{opening['id']}/stats")

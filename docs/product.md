@@ -19,8 +19,9 @@ El usuario arma un **repertorio de apertura** para un lado (blancas o negras), c
 
 ## Entrenamiento
 Ver `docs/training-algorithm.md`. Resumen:
+- Se puede elegir **orden de ramas**: `Ordenado` (principal primero; el resto se mezcla) o `Desordenado` (todas las ramas se mezclan, incluida la principal, para mayor dificultad).
 - La app juega el lado rival; el usuario responde con su lado.
-- Siempre empieza por la linea principal; luego recorre el resto de las ramas en profundidad (DFS) sin saltar lejos entre ramas.
+- En modo `Ordenado` empieza por la linea principal; en `Desordenado` el orden de las ramas es aleatorio. Luego recorre las ramas en profundidad (DFS) sin saltar lejos entre ramas.
 - Al cambiar de rama NO se repite desde el inicio: se salta (fast-forward) hasta el punto de bifurcacion.
 - Si el usuario se equivoca: se le avisa, se le muestra la jugada correcta, NO puede reintentar en el momento. La posicion queda pendiente y se vuelve a preguntar mas tarde en la misma sesion.
 - Termina cuando acerto todas las posiciones pendientes y se exploraron todas las ramas.

@@ -4,7 +4,11 @@ Debe vivir como logica PURA y testeable en `backend/utils/training.py` (sin Fast
 
 ## Definiciones
 - **Pregunta**: nodo donde le toca mover al usuario y que tiene un hijo (la jugada correcta). Se identifica por su `node_id`.
-- **Orden de recorrido**: DFS desde la raiz. En cada nodo, hijos ordenados con la principal (`order_index = 0`) primero; las demas hermanas se mezclan aleatoriamente entre si. Nunca se mezcla entre niveles: eso garantiza que no se salte de 1.1.3.1 a 1.6.2.3.
+- **Orden de recorrido**: DFS desde la raiz. Nunca se mezcla entre niveles: eso garantiza que no se salte de 1.1.3.1 a 1.6.2.3.
+- **Orden de ramas** (por sesion; por defecto `ordered`):
+  - `ordered`: en cada nodo, hijos ordenados con la principal (`order_index = 0`) primero; las demas hermanas se mezclan aleatoriamente entre si.
+  - `shuffled`: todas las hermanas se mezclan en cada nodo, incluida la principal.
+  - En ambos modos el resto del algoritmo (DFS, repaso, preguntas) es igual. Las jugadas correctas no cambian.
 
 ## Fase 1: recorrido
 1. Se visita cada nodo una sola vez. Nodos del rival: la app juega la jugada (el usuario la ve). Nodos de pregunta: se le pregunta al usuario.

@@ -44,6 +44,7 @@ def create_session(
             payload.opening_id,
             mode=payload.mode,
             from_node_id=payload.from_node_id,
+            branch_order=payload.branch_order,
         )
     except TrainingNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc))

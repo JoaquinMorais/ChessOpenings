@@ -264,3 +264,19 @@ def test_hint_used_marks_answer_as_incorrect(client: TestClient):
     )
     assert root_stats["attempts"] == 1
     assert root_stats["correct"] == 0
+
+
+def test_training_branch_order_payload(client: TestClient):
+    opening_id, _ = _create_linear_opening(client)
+
+    response = client.post(
+        SESSIONS,
+        json={"opening_id": opening_id, "branch_order": "shuffled"},
+    )
+    assert response.status_code == 201
+
+    response = client.post(
+        SESSIONS,
+        json={"opening_id": opening_id, "branch_order": "invalid"},
+    )
+    assert response.status_code == 422

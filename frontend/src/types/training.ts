@@ -2,9 +2,11 @@ import type { ClassificationKey } from "./classifications";
 import type { Evaluation } from "./evaluation";
 
 export type TrainingMode = "full" | "weak";
+export type TrainingBranchOrder = "ordered" | "shuffled";
 
 export interface TrainingSessionOptions {
   mode?: TrainingMode;
+  branchOrder?: TrainingBranchOrder;
   fromNodeId?: number | null;
 }
 

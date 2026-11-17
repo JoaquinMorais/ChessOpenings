@@ -1,6 +1,8 @@
 import json
 import random
 
+import pytest
+
 from utils.training import TrainingNode, answer, start
 
 
@@ -112,7 +114,7 @@ def test_linear_tree_and_finish():
     }
 
 
-def test_three_branches_principal_first_and_shuffle():
+def test_ordered_three_branches_principal_first_and_secondary_shuffle():
     rest = [2, 3]
     random.Random(1).shuffle(rest)
     expected_questions = [1] + rest
@@ -125,8 +127,38 @@ def test_three_branches_principal_first_and_shuffle():
         visited.append(step["node_id"])
         _, state, step = answer(state, step["node_id"], correct_by_node[step["node_id"]])
 
+    assert state["branch_order"] == "ordered"
     assert visited == expected_questions
     assert step["kind"] == "finished"
+
+
+def test_shuffled_order_mixes_main_branch():
+    correct_by_node = {1: "e7e5", 2: "d7d5", 3: "e7e6"}
+
+    state, step = start(
+        three_branch_tree(),
+        "black",
+        random.Random(1),
+        branch_order="shuffled",
+    )
+    visited = []
+    while step["kind"] == "question":
+        visited.append(step["node_id"])
+        _, state, step = answer(state, step["node_id"], correct_by_node[step["node_id"]])
+
+    assert state["branch_order"] == "shuffled"
+    assert visited == [2, 3, 1]
+    assert step["kind"] == "finished"
+
+
+def test_invalid_branch_order_is_rejected():
+    with pytest.raises(ValueError, match="orden de ramas"):
+        start(
+            three_branch_tree(),
+            "black",
+            random.Random(1),
+            branch_order="invalid",  # type: ignore[arg-type]
+        )
 
 
 def test_nested_branches_do_not_jump_between_far_branches():

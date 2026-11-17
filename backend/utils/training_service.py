@@ -8,6 +8,7 @@ from models.node import Node
 from models.opening import Opening
 from models.training import PositionStat, TrainingSession
 from utils.training import (
+    BranchOrder,
     TrainingNode,
     answer as training_answer,
     refresh_step,
@@ -154,12 +155,15 @@ def create_training_session(
     opening_id: int,
     mode: str = "full",
     from_node_id: int | None = None,
+    branch_order: BranchOrder = "ordered",
 ) -> Tuple[TrainingSession, Dict[str, Any]]:
     opening = session.get(Opening, opening_id)
     if not opening:
         raise TrainingNotFoundError("La apertura no existe.")
     if mode not in ("full", "weak"):
         raise TrainingConflictError("El modo de entrenamiento no es valido.")
+    if branch_order not in ("ordered", "shuffled"):
+        raise TrainingConflictError("El orden de ramas no es valido.")
 
     if from_node_id is not None:
         from_node = session.get(Node, from_node_id)
@@ -182,6 +186,7 @@ def create_training_session(
             random.Random(),
             question_filter=question_filter,
             from_node_id=from_node_id,
+            branch_order=branch_order,
         )
     except ValueError as exc:
         raise TrainingNotFoundError(str(exc))

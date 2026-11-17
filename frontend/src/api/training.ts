@@ -15,6 +15,7 @@ export function createTrainingSession(
     body: JSON.stringify({
       opening_id: openingId,
       mode: options.mode ?? "full",
+      branch_order: options.branchOrder ?? "ordered",
       from_node_id: options.fromNodeId ?? null,
     }),
   });

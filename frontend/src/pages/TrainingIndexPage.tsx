@@ -4,7 +4,10 @@ import { Link } from "react-router-dom";
 import { ApiError } from "../api/client";
 import { listOpenings } from "../api/openings";
 import type { OpeningColor, OpeningSummary } from "../types/opening";
-import type { TrainingMode } from "../types/training";
+import type {
+  TrainingBranchOrder,
+  TrainingMode,
+} from "../types/training";
 
 type ListState =
   | { status: "loading" }
@@ -30,6 +33,8 @@ function formatMoves(nodeCount: number): number {
 function TrainingIndexPage() {
   const [list, setList] = useState<ListState>({ status: "loading" });
   const [mode, setMode] = useState<TrainingMode>("full");
+  const [branchOrder, setBranchOrder] =
+    useState<TrainingBranchOrder>("ordered");
 
   const loadOpenings = useCallback(async () => {
     setList({ status: "loading" });
@@ -69,6 +74,24 @@ function TrainingIndexPage() {
           {mode === "full"
             ? "Se recorren todas las preguntas del repertorio."
             : "Se preguntan solo posiciones con acierto bajo, viejas o nunca practicadas."}
+        </p>
+        <label htmlFor="training-order">Orden de ramas</label>
+        <select
+          id="training-order"
+          value={branchOrder}
+          onChange={(event) =>
+            setBranchOrder(
+              event.target.value === "shuffled" ? "shuffled" : "ordered",
+            )
+          }
+        >
+          <option value="ordered">Ordenado</option>
+          <option value="shuffled">Desordenado</option>
+        </select>
+        <p className="editor-info">
+          {branchOrder === "ordered"
+            ? "La rama principal va primero; las demás ramas se mezclan."
+            : "Todas las ramas se mezclan en cada bifurcación, incluida la principal."}
         </p>
       </section>
 
@@ -120,7 +143,7 @@ function TrainingIndexPage() {
               <div className="opening-actions">
                 <Link
                   className="button button--small"
-                  to={`/openings/${opening.id}/train?mode=${mode}`}
+                  to={`/openings/${opening.id}/train?mode=${mode}&order=${branchOrder}`}
                 >
                   Entrenar
                 </Link>

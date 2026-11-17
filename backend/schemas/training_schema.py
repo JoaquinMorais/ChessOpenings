@@ -9,6 +9,7 @@ from schemas.node_schema import Evaluation
 class TrainingSessionCreate(BaseModel):
     opening_id: int
     mode: Literal["full", "weak"] = "full"
+    branch_order: Literal["ordered", "shuffled"] = "ordered"
     from_node_id: Optional[int] = None
 
 

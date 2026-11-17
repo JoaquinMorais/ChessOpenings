@@ -11,7 +11,12 @@ function Layout() {
     <div className="app-shell">
       <header className="app-header">
         <div className="brand">
-          <span className="brand-mark">CO</span>
+          <img
+            className="brand-mark"
+            src="/logo.png"
+            alt=""
+            aria-hidden="true"
+          />
           <div>
             <h1>Chess Openings</h1>
             <p>Entrenador de aperturas</p>

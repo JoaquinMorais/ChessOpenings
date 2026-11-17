@@ -17,6 +17,7 @@ import EvalBar from "../components/EvalBar";
 import type { Evaluation } from "../types/evaluation";
 import type { OpeningSummary } from "../types/opening";
 import type {
+  TrainingBranchOrder,
   TrainingMode,
   TrainingMoveInfo,
   TrainingQuestionStep,
@@ -149,6 +150,9 @@ function TrainingPage() {
   const openingId = Number(id);
   const modeParam = searchParams.get("mode");
   const trainingMode: TrainingMode = modeParam === "weak" ? "weak" : "full";
+  const orderParam = searchParams.get("order");
+  const branchOrder: TrainingBranchOrder =
+    orderParam === "shuffled" ? "shuffled" : "ordered";
   const fromNodeParam = Number(searchParams.get("from_node_id"));
   const fromNodeId =
     Number.isInteger(fromNodeParam) && fromNodeParam > 0
@@ -349,6 +353,7 @@ function TrainingPage() {
       try {
         const session = await createTrainingSession(nextOpeningId, {
           mode: trainingMode,
+          branchOrder,
           fromNodeId,
         });
         if (!session.step) {
@@ -365,7 +370,7 @@ function TrainingPage() {
         setPhase("error");
       }
     },
-    [runStep, trainingMode, fromNodeId],
+    [runStep, trainingMode, branchOrder, fromNodeId],
   );
 
   useEffect(() => {

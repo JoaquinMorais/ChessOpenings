@@ -3,7 +3,7 @@ from __future__ import annotations
 import copy
 import random
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Literal, Optional, Tuple
 
 
 @dataclass
@@ -24,6 +24,7 @@ class TrainingNode:
 State = Dict[str, Any]
 Step = Dict[str, Any]
 AnswerResult = Dict[str, Any]
+BranchOrder = Literal["ordered", "shuffled"]
 
 
 def _is_user_turn(ply: int, color: str) -> bool:
@@ -34,15 +35,19 @@ def _is_question(node: Dict[str, Any], color: str) -> bool:
     return _is_user_turn(node["ply"], color) and bool(node["children"])
 
 
-def _serialize_tree(node: TrainingNode, rng: random.Random) -> Dict[str, Any]:
+def _serialize_tree(
+    node: TrainingNode,
+    rng: random.Random,
+    branch_order: BranchOrder,
+) -> Dict[str, Any]:
     children = sorted(node.children, key=lambda child: (child.order_index, child.id))
-    if children:
+    if branch_order == "shuffled":
+        rng.shuffle(children)
+    elif children:
         main = children[0]
         rest = children[1:]
         rng.shuffle(rest)
-        ordered_children = [main] + rest
-    else:
-        ordered_children = []
+        children = [main] + rest
 
     return {
         "id": node.id,
@@ -55,7 +60,10 @@ def _serialize_tree(node: TrainingNode, rng: random.Random) -> Dict[str, Any]:
         "comment": node.comment,
         "classification": node.classification,
         "evaluation": node.evaluation,
-        "children": [_serialize_tree(child, rng) for child in ordered_children],
+        "children": [
+            _serialize_tree(child, rng, branch_order)
+            for child in children
+        ],
     }
 
 
@@ -242,8 +250,12 @@ def start(
     rng: random.Random,
     question_filter: Optional[set[int]] = None,
     from_node_id: Optional[int] = None,
+    branch_order: BranchOrder = "ordered",
 ) -> Tuple[State, Step]:
-    serialized = _serialize_tree(tree, rng)
+    if branch_order not in ("ordered", "shuffled"):
+        raise ValueError("El orden de ramas no es valido.")
+
+    serialized = _serialize_tree(tree, rng, branch_order)
     by_id, parent, full_order = _index_tree(serialized)
 
     if from_node_id is not None and from_node_id not in by_id:
@@ -286,6 +298,7 @@ def start(
         "answered": 0,
         "allowed_question_ids": allowed_ids,
         "scope_root_id": scope_root_id,
+        "branch_order": branch_order,
     }
 
     step = _next_step(state)

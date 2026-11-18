@@ -54,3 +54,6 @@ Esto AMPLIA los otros docs; si hay contradiccion, manda este archivo.
 - Ultima jugada resaltada en **amarillo** en las casillas origen y destino. En el editor sale del nodo actual (al navegar se actualiza; en la raiz no hay resaltado).
 - Si la jugada actual tiene clasificacion, se muestra su icono (simbolo + color) en la casilla destino de la ultima jugada, como en chess.com. Si la version de react-chessboard no permite dibujarlo sobre la casilla, mostrarlo junto a la info de la jugada.
 - Deben funcionar: captura al paso (en passant), enroque corto y largo, y promocion (con selector de pieza; por defecto reina si no hay selector).
+- Click derecho simple sobre una casilla: la marca o desmarca con un circulo rojo. Se pueden marcar varias casillas; las marcas se limpian al cambiar de posicion.
+- Click derecho + arrastre: dibuja una flecha, al estilo chess.com/lichess. Las flechas se limpian al cambiar de posicion.
+- Si hay una pieza seleccionada o arrastrandose, click derecho cancela la seleccion/arrastre y no crea marca ni flecha. El menu contextual del navegador no aparece sobre el tablero.

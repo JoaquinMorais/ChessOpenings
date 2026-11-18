@@ -842,6 +842,8 @@ button {
   position: relative;
   isolation: isolate;
   width: 100%;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .move-badge-overlay {

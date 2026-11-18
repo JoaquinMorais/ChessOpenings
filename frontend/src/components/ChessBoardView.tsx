@@ -44,8 +44,8 @@ const MOVE_DOT =
   "radial-gradient(circle, rgba(31, 61, 43, 0.38) 18%, transparent 19%)";
 const CAPTURE_RING =
   "radial-gradient(circle, transparent 54%, rgba(31, 61, 43, 0.38) 56%, rgba(31, 61, 43, 0.38) 68%, transparent 70%)";
-const TOUCH_CAPABLE =
-  typeof window !== "undefined" && "ontouchstart" in window;
+const MARK_RING =
+  "radial-gradient(circle at center, transparent 0 52%, rgba(202, 52, 49, 0.92) 54%, rgba(202, 52, 49, 0.92) 66%, transparent 68%)";
 
 const PROMOTION_OPTIONS: Array<{
   value: "q" | "r" | "b" | "n";
@@ -83,8 +83,24 @@ function ChessBoardView({
   const [selectedSquare, setSelectedSquare] = useState<Square | null>(null);
   const [promotion, setPromotion] = useState<PromotionState | null>(null);
   const [responsiveWidth, setResponsiveWidth] = useState<number | null>(null);
+  const [markedSquares, setMarkedSquares] = useState<Set<Square>>(
+    () => new Set(),
+  );
+  const [isDraggingPiece, setIsDraggingPiece] = useState(false);
   const boardRef = useRef<HTMLDivElement>(null);
   const dragDotElementsRef = useRef<HTMLElement[]>([]);
+  const isDraggingPieceRef = useRef(false);
+  const suppressNextDropRef = useRef(false);
+  const dndManagerRef = useRef<Parameters<typeof TouchBackend>[0] | null>(
+    null,
+  );
+  const dndBackend = useMemo<typeof TouchBackend>(
+    () => (manager, context, options) => {
+      dndManagerRef.current = manager;
+      return TouchBackend(manager, context, options);
+    },
+    [],
+  );
   const game = useMemo(() => new Chess(fen), [fen]);
   const pickupAvailable = pickupEnabled ?? !disabled;
   const canPickUp = pickupAvailable && !promotion;
@@ -101,11 +117,73 @@ function ChessBoardView({
     dragDotElementsRef.current = [];
   }, []);
 
+  const cancelDragging = useCallback(() => {
+    if (!isDraggingPieceRef.current) {
+      return;
+    }
+    suppressNextDropRef.current = true;
+    dndManagerRef.current?.getActions().endDrag();
+    isDraggingPieceRef.current = false;
+    setIsDraggingPiece(false);
+    setSelectedSquare(null);
+    clearDragDots();
+  }, [clearDragDots]);
+
   useEffect(() => {
     setSelectedSquare(null);
     setPromotion(null);
+    setMarkedSquares(new Set());
+    isDraggingPieceRef.current = false;
+    suppressNextDropRef.current = false;
+    setIsDraggingPiece(false);
     clearDragDots();
   }, [fen, pickupAvailable, clearDragDots]);
+
+  useEffect(() => {
+    const handleRightButton = (event: MouseEvent | PointerEvent) => {
+      if (event.button !== 2 || !isDraggingPieceRef.current) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      cancelDragging();
+    };
+
+    const handleContextMenu = (event: MouseEvent) => {
+      if (!isDraggingPieceRef.current) {
+        return;
+      }
+      event.preventDefault();
+      cancelDragging();
+    };
+
+    const handleDrop = (event: DragEvent) => {
+      if (
+        !isDraggingPieceRef.current ||
+        (event.button !== 2 && event.buttons !== 2)
+      ) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      cancelDragging();
+    };
+
+    window.addEventListener("pointerdown", handleRightButton, true);
+    window.addEventListener("mousedown", handleRightButton, true);
+    window.addEventListener("pointerup", handleRightButton, true);
+    window.addEventListener("mouseup", handleRightButton, true);
+    window.addEventListener("contextmenu", handleContextMenu, true);
+    window.addEventListener("drop", handleDrop, true);
+    return () => {
+      window.removeEventListener("pointerdown", handleRightButton, true);
+      window.removeEventListener("mousedown", handleRightButton, true);
+      window.removeEventListener("pointerup", handleRightButton, true);
+      window.removeEventListener("mouseup", handleRightButton, true);
+      window.removeEventListener("contextmenu", handleContextMenu, true);
+      window.removeEventListener("drop", handleDrop, true);
+    };
+  }, [cancelDragging]);
 
   useLayoutEffect(() => {
     if (!responsive) {
@@ -211,8 +289,26 @@ function ChessBoardView({
       };
     }
 
+    for (const square of markedSquares) {
+      const current = styles[square] ?? {};
+      const currentImage = current.backgroundImage;
+      styles[square] = {
+        ...current,
+        backgroundImage: currentImage
+          ? `${MARK_RING}, ${currentImage}`
+          : MARK_RING,
+        backgroundSize: currentImage
+          ? `100% 100%, ${current.backgroundSize ?? "100% 100%"}`
+          : "100% 100%",
+        backgroundPosition: currentImage
+          ? `center, ${current.backgroundPosition ?? "center"}`
+          : "center",
+        backgroundRepeat: "no-repeat",
+      };
+    }
+
     return styles;
-  }, [canPickUp, hintSquare, lastMove, legalMoves]);
+  }, [canPickUp, hintSquare, lastMove, legalMoves, markedSquares]);
 
   const isPromotionMove = (from: Square, to: Square): boolean => {
     const piece = game.get(from);
@@ -334,12 +430,61 @@ function ChessBoardView({
     setSelectedSquare(null);
   };
 
+  const handleSquareRightClick = (square: Square) => {
+    if (promotion) {
+      return;
+    }
+
+    if (isDraggingPieceRef.current) {
+      cancelDragging();
+      return;
+    }
+
+    if (selectedSquare) {
+      setSelectedSquare(null);
+      clearDragDots();
+      return;
+    }
+
+    setMarkedSquares((current) => {
+      const next = new Set(current);
+      if (next.has(square)) {
+        next.delete(square);
+      } else {
+        next.add(square);
+      }
+      return next;
+    });
+  };
+
+  const handlePieceDragBegin = (sourceSquare: Square) => {
+    suppressNextDropRef.current = false;
+    isDraggingPieceRef.current = true;
+    setIsDraggingPiece(true);
+    setSelectedSquare(null);
+    applyDragDots(sourceSquare);
+  };
+
+  const handlePieceDragEnd = () => {
+    isDraggingPieceRef.current = false;
+    setIsDraggingPiece(false);
+    setSelectedSquare(null);
+    clearDragDots();
+  };
+
   const handlePieceDrop = (
     sourceSquare: Square,
     targetSquare: Square,
   ): boolean => {
     setSelectedSquare(null);
     clearDragDots();
+
+    if (suppressNextDropRef.current) {
+      suppressNextDropRef.current = false;
+      isDraggingPieceRef.current = false;
+      setIsDraggingPiece(false);
+      return false;
+    }
 
     if (!canCommitRef.current) {
       return false;
@@ -367,10 +512,14 @@ function ChessBoardView({
 
   const hasSquareStyles = Object.keys(squareStyles).length > 0;
   const resolvedBoardWidth = responsive ? responsiveWidth : boardWidth ?? 400;
+  const arrowsAllowed = !selectedSquare && !isDraggingPiece && !promotion;
 
   return (
     <div className="board-wrapper" ref={boardRef}>
-      <div className="board-area">
+      <div
+        className="board-area"
+        onContextMenu={(event) => event.preventDefault()}
+      >
         {resolvedBoardWidth !== null && (
           <Chessboard
             key={responsive ? resolvedBoardWidth : undefined}
@@ -379,19 +528,22 @@ function ChessBoardView({
             boardOrientation={orientation}
             boardWidth={resolvedBoardWidth}
             customSquareStyles={hasSquareStyles ? squareStyles : undefined}
-            customDndBackend={TOUCH_CAPABLE ? TouchBackend : undefined}
-            customDndBackendOptions={
-              TOUCH_CAPABLE
-                ? { enableMouseEvents: true, enableTouchEvents: true }
-                : undefined
-            }
+            customDndBackend={dndBackend}
+            customDndBackendOptions={{
+              enableMouseEvents: true,
+              enableTouchEvents: true,
+            }}
+            areArrowsAllowed={arrowsAllowed}
             onSquareClick={(square) =>
               handleSquareClick(square as Square)
             }
-            onPieceDragBegin={(_piece, sourceSquare) =>
-              applyDragDots(sourceSquare as Square)
+            onSquareRightClick={(square) =>
+              handleSquareRightClick(square as Square)
             }
-            onPieceDragEnd={clearDragDots}
+            onPieceDragBegin={(_piece, sourceSquare) =>
+              handlePieceDragBegin(sourceSquare as Square)
+            }
+            onPieceDragEnd={handlePieceDragEnd}
             onPieceDrop={(sourceSquare, targetSquare) =>
               handlePieceDrop(
                 sourceSquare as Square,

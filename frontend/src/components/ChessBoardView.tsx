@@ -12,6 +12,7 @@ import { Chessboard } from "react-chessboard";
 import { TouchBackend } from "react-dnd-touch-backend";
 
 import MoveBadgeOverlay from "./MoveBadgeOverlay";
+import RecommendationArrowsOverlay from "./RecommendationArrowsOverlay";
 
 export interface BoardLastMove {
   from: string;
@@ -21,6 +22,13 @@ export interface BoardLastMove {
 export interface BoardBadge {
   square: string;
   classification: string;
+}
+
+export interface BoardArrow {
+  from: string;
+  to: string;
+  color?: string;
+  covered?: boolean;
 }
 
 export type BoardMove =
@@ -38,6 +46,7 @@ interface ChessBoardViewProps {
   responsive?: boolean;
   badge?: BoardBadge | null;
   hintSquare?: string | null;
+  recommendationArrows?: BoardArrow[];
 }
 
 const MOVE_DOT =
@@ -79,6 +88,7 @@ function ChessBoardView({
   responsive = false,
   badge,
   hintSquare,
+  recommendationArrows,
 }: ChessBoardViewProps) {
   const [selectedSquare, setSelectedSquare] = useState<Square | null>(null);
   const [promotion, setPromotion] = useState<PromotionState | null>(null);
@@ -382,6 +392,7 @@ function ChessBoardView({
   };
 
   const handleSquareClick = (square: Square) => {
+    setMarkedSquares(new Set());
     if (!canPickUp) {
       return;
     }
@@ -462,6 +473,7 @@ function ChessBoardView({
     isDraggingPieceRef.current = true;
     setIsDraggingPiece(true);
     setSelectedSquare(null);
+    setMarkedSquares(new Set());
     applyDragDots(sourceSquare);
   };
 
@@ -556,6 +568,11 @@ function ChessBoardView({
             arePiecesDraggable={canPickUp}
           />
         )}
+
+        <RecommendationArrowsOverlay
+          arrows={recommendationArrows ?? []}
+          orientation={orientation}
+        />
 
         <MoveBadgeOverlay
           square={badge?.square ?? null}

@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     evaluator: Literal["stockfish", "llm"] = "stockfish"
     stockfish_path: str = "/usr/games/stockfish"
     eval_movetime_ms: int = 300
+    recommendation_movetime_ms: int = 500
     llm_base_url: str | None = None
     llm_api_key: str | None = None
     llm_model: str | None = None

@@ -32,6 +32,7 @@ Nodos
 - `POST /api/openings/{id}/moves` {parent_id, move (UCI o SAN)} -> crea nodo o devuelve el existente
 - `DELETE /api/nodes/{node_id}` borra el subarbol (no se puede borrar la raiz)
 - `POST /api/nodes/{node_id}/make-main` lo pone como `order_index = 0` entre hermanas
+- `GET /api/nodes/{node_id}/recommendations` devuelve el top 3 de Stockfish para el editor (solo lectura)
 
 Import/Export
 - `GET /api/openings/{id}/export` descarga JSON

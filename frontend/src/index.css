@@ -2446,3 +2446,89 @@ button {
     min-width: 1.5rem;
   }
 }
+
+.recommendation-panel {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.recommendation-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.recommendation-heading .card-label {
+  margin-bottom: 0;
+}
+
+.recommendation-source {
+  color: #617064;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.recommendation-list {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.recommendation-item {
+  display: grid;
+  grid-template-columns: auto 3.6rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.45rem;
+  color: #536256;
+  font-size: 0.86rem;
+}
+
+.recommendation-item strong {
+  color: #16211b;
+}
+
+.recommendation-dot {
+  width: 0.65rem;
+  height: 0.65rem;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px rgba(22, 33, 27, 0.18);
+}
+
+.recommendation-error {
+  margin: 0;
+  color: #8f3c33;
+  font-size: 0.86rem;
+}
+
+.recommendation-arrows-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.recommendation-arrows-overlay svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.recommendation-covered {
+  justify-self: end;
+  border: 1px solid rgba(212, 160, 23, 0.55);
+  border-radius: 999px;
+  padding: 0.08rem 0.42rem;
+  color: #7a5a10;
+  background: rgba(212, 160, 23, 0.12);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}

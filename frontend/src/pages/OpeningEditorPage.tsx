@@ -6,18 +6,22 @@ import { ApiError } from "../api/client";
 import { useEvaluationJobs } from "../contexts/EvaluationJobsContext";
 import { addMove, deleteNode, getTree, makeMain } from "../api/nodes";
 import { getOpening, setOpeningFavorite } from "../api/openings";
+import { getRecommendations } from "../api/recommendations";
 import ChessBoardView from "../components/ChessBoardView";
 import type { BoardLastMove, BoardMove } from "../components/ChessBoardView";
 import CurrentMovePanel from "../components/CurrentMovePanel";
 import type { CurrentMovePanelHandle } from "../components/CurrentMovePanel";
 import EvalBar from "../components/EvalBar";
 import FavoriteButton from "../components/FavoriteButton";
+import RecommendationPanel from "../components/RecommendationPanel";
 import VariationTree, {
   formatMoveLabel,
 } from "../components/VariationTree";
 import { CLASSIFICATIONS } from "../types/classifications";
 import type { NodeRead, TreeNode } from "../types/node";
 import type { OpeningSummary } from "../types/opening";
+import type { NodeRecommendations } from "../types/recommendation";
+import { recommendationColor } from "../types/recommendation";
 
 interface TreeIndex {
   byId: Map<number, TreeNode>;
@@ -28,6 +32,27 @@ const COLOR_LABELS = {
   white: "Blancas",
   black: "Negras",
 } as const;
+
+const SHOW_RECOMMENDATIONS_KEY = "chess-openings-show-recommendations";
+
+function readRecommendationsSetting(): boolean {
+  if (typeof window === "undefined") {
+    return false;
+  }
+  try {
+    return window.localStorage.getItem(SHOW_RECOMMENDATIONS_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
+function writeRecommendationsSetting(value: boolean): void {
+  try {
+    window.localStorage.setItem(SHOW_RECOMMENDATIONS_KEY, String(value));
+  } catch {
+    // La app sigue funcionando aunque localStorage no esté disponible.
+  }
+}
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof ApiError) {
@@ -146,6 +171,15 @@ function OpeningEditorPage() {
     kind: "success" | "info" | "error";
   } | null>(null);
   const [boardFlipped, setBoardFlipped] = useState(false);
+  const [showRecommendations, setShowRecommendations] = useState(
+    readRecommendationsSetting,
+  );
+  const [recommendations, setRecommendations] =
+    useState<NodeRecommendations | null>(null);
+  const [recommendationsLoading, setRecommendationsLoading] =
+    useState(false);
+  const [recommendationsError, setRecommendationsError] =
+    useState<string | null>(null);
   const [branchNotice, setBranchNotice] = useState<string | null>(null);
   const [transpositionNotice, setTranspositionNotice] = useState<{
     nodeId: number;
@@ -319,6 +353,72 @@ function OpeningEditorPage() {
       : null;
   const currentIsMain = currentNode?.order_index === 0;
   const rivalResponses = !isUserTurn ? currentNode?.children ?? [] : [];
+
+  useEffect(() => {
+    if (!showRecommendations || !currentNode || isUserTurn) {
+      setRecommendations(null);
+      setRecommendationsLoading(false);
+      setRecommendationsError(null);
+      return;
+    }
+
+    let cancelled = false;
+    setRecommendations(null);
+    setRecommendationsLoading(true);
+    setRecommendationsError(null);
+
+    void getRecommendations(currentNode.id)
+      .then((result) => {
+        if (cancelled) {
+          return;
+        }
+        setRecommendations(result);
+        setRecommendationsLoading(false);
+      })
+      .catch((error) => {
+        if (cancelled) {
+          return;
+        }
+        setRecommendationsError(getErrorMessage(error));
+        setRecommendationsLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [showRecommendations, currentNode?.id, isUserTurn]);
+
+  const recommendationMoves = useMemo(() => {
+    if (!recommendations) {
+      return [];
+    }
+    const childUcis = new Set(
+      (currentNode?.children ?? [])
+        .map((child) => child.uci)
+        .filter((uci): uci is string => Boolean(uci)),
+    );
+    return recommendations.moves.map((move) => ({
+      ...move,
+      covered: childUcis.has(move.uci),
+    }));
+  }, [currentNode, recommendations]);
+
+  const recommendationArrows = useMemo(() => {
+    if (!showRecommendations || isUserTurn || recommendationMoves.length === 0) {
+      return undefined;
+    }
+    return recommendationMoves.map((move) => ({
+      from: move.uci.slice(0, 2),
+      to: move.uci.slice(2, 4),
+      color: recommendationColor(move.rank),
+      covered: move.covered,
+    }));
+  }, [isUserTurn, recommendationMoves, showRecommendations]);
+
+  const handleToggleRecommendations = (enabled: boolean) => {
+    setShowRecommendations(enabled);
+    writeRecommendationsSetting(enabled);
+  };
 
   const saveMove = useCallback(
     async (openingId: number, parentId: number, uci: string) => {
@@ -744,6 +844,7 @@ function OpeningEditorPage() {
                   : null
               }
               responsive
+              recommendationArrows={recommendationArrows}
               onMove={handleMove}
             />
           </div>
@@ -810,7 +911,29 @@ function OpeningEditorPage() {
             >
               Entrenar desde acá
             </button>
+            <label className="checkbox-field editor-recommendation-toggle">
+              <input
+                type="checkbox"
+                checked={showRecommendations}
+                onChange={(event) =>
+                  handleToggleRecommendations(event.target.checked)
+                }
+              />
+              <span>Recomendaciones</span>
+            </label>
+            <p className="editor-hint">
+              Stockfish muestra 3 flechas cuando mueve el rival.
+            </p>
           </section>
+
+          {showRecommendations && (
+            <RecommendationPanel
+              isUserTurn={isUserTurn}
+              loading={recommendationsLoading}
+              error={recommendationsError}
+              moves={recommendationMoves}
+            />
+          )}
 
           <section className="panel editor-tree-panel">
             <p className="card-label">Jugadas</p>

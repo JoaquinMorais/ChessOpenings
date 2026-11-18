@@ -16,6 +16,7 @@ El usuario arma un **repertorio de apertura** para un lado (blancas o negras), c
   - si ya existe esa jugada como hijo, simplemente se navega a ella;
   - si no existe, se crea (si es turno del rival se agrega como nueva rama; si es turno del usuario y ya hay una jugada, se rechaza con mensaje claro).
 - Se puede navegar el arbol, borrar una rama (con todo su subarbol) y marcar otra rama como principal (reordenar hermanas).
+- En el editor se pueden activar **Recomendaciones**: cuando mueve el rival, Stockfish muestra las 3 mejores jugadas como flechas (azul oscuro, azul y celeste). No agrega ramas automaticamente.
 
 ## Entrenamiento
 Ver `docs/training-algorithm.md`. Resumen:

@@ -19,6 +19,7 @@ services:
       EVALUATOR: ${EVALUATOR:-stockfish}
       STOCKFISH_PATH: ${STOCKFISH_PATH:-/usr/games/stockfish}
       EVAL_MOVETIME_MS: ${EVAL_MOVETIME_MS:-300}
+      RECOMMENDATION_MOVETIME_MS: ${RECOMMENDATION_MOVETIME_MS:-500}
       LLM_BASE_URL: ${LLM_BASE_URL:-}
       LLM_API_KEY: ${LLM_API_KEY:-}
       LLM_MODEL: ${LLM_MODEL:-}
@@ -44,6 +45,7 @@ services:
       EVALUATOR: ${EVALUATOR:-stockfish}
       STOCKFISH_PATH: ${STOCKFISH_PATH:-/usr/games/stockfish}
       EVAL_MOVETIME_MS: ${EVAL_MOVETIME_MS:-300}
+      RECOMMENDATION_MOVETIME_MS: ${RECOMMENDATION_MOVETIME_MS:-500}
     depends_on:
       db:
         condition: service_healthy

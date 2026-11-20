@@ -20,6 +20,7 @@ El usuario arma un **repertorio de apertura** para un lado (blancas o negras), c
 
 ## Entrenamiento
 Ver `docs/training-algorithm.md`. Resumen:
+- Se puede elegir **modo de preguntas**: `Completo`, `Solo preguntas débiles` o `Ramas débiles`. `Ramas débiles` sigue el camino hacia preguntas con menos de 8 intentos o menos de 70% de acierto.
 - Se puede elegir **orden de ramas**: `Ordenado` (principal primero; el resto se mezcla) o `Desordenado` (todas las ramas se mezclan, incluida la principal, para mayor dificultad).
 - La app juega el lado rival; el usuario responde con su lado.
 - En modo `Ordenado` empieza por la linea principal; en `Desordenado` el orden de las ramas es aleatorio. Luego recorre las ramas en profundidad (DFS) sin saltar lejos entre ramas.

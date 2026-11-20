@@ -17,7 +17,7 @@ interface ArrowGeometry {
   points: string;
 }
 
-const GOLD = "#d4a017";
+const ACCENT = "#ef4444";
 const DEFAULT_COLOR = "#1e40af";
 
 function squareCenter(
@@ -77,11 +77,8 @@ function RecommendationArrowsOverlay({
       if (!from || !to) {
         return null;
       }
-      const colorHead = arrowGeometry(from, to, 0.32, 0.12);
-      const goldHead = arrow.covered
-        ? arrowGeometry(from, to, 0.38, 0.15)
-        : null;
-      if (!colorHead || (arrow.covered && !goldHead)) {
+      const head = arrowGeometry(from, to, 0.34, 0.13);
+      if (!head) {
         return null;
       }
       return {
@@ -89,8 +86,7 @@ function RecommendationArrowsOverlay({
         color: arrow.color ?? DEFAULT_COLOR,
         from,
         to,
-        colorHead,
-        goldHead,
+        head,
         key: `${arrow.from}-${arrow.to}-${arrow.color ?? DEFAULT_COLOR}`,
       };
     })
@@ -101,8 +97,7 @@ function RecommendationArrowsOverlay({
         color: string;
         from: Point;
         to: Point;
-        colorHead: ArrowGeometry;
-        goldHead: ArrowGeometry | null;
+        head: ArrowGeometry;
         key: string;
       } => arrow !== null,
     );
@@ -116,35 +111,32 @@ function RecommendationArrowsOverlay({
       <svg viewBox="0 0 8 8" preserveAspectRatio="none">
         {visibleArrows.map((arrow) => (
           <Fragment key={arrow.key}>
-            {arrow.goldHead && (
-              <>
-                <line
-                  x1={arrow.from.x}
-                  y1={arrow.from.y}
-                  x2={arrow.goldHead.base.x}
-                  y2={arrow.goldHead.base.y}
-                  stroke={GOLD}
-                  strokeWidth="0.17"
-                  strokeLinecap="round"
-                />
-                <polygon
-                  points={arrow.goldHead.points}
-                  fill={GOLD}
-                />
-              </>
+            {arrow.covered && (
+              <line
+                x1={arrow.from.x}
+                y1={arrow.from.y}
+                x2={arrow.head.base.x}
+                y2={arrow.head.base.y}
+                stroke={ACCENT}
+                strokeWidth="0.17"
+                strokeLinecap="round"
+              />
             )}
             <line
               x1={arrow.from.x}
               y1={arrow.from.y}
-              x2={arrow.colorHead.base.x}
-              y2={arrow.colorHead.base.y}
+              x2={arrow.head.base.x}
+              y2={arrow.head.base.y}
               stroke={arrow.color}
               strokeWidth={arrow.covered ? "0.11" : "0.12"}
               strokeLinecap="round"
             />
             <polygon
-              points={arrow.colorHead.points}
+              points={arrow.head.points}
               fill={arrow.color}
+              stroke={arrow.covered ? ACCENT : undefined}
+              strokeWidth={arrow.covered ? "0.07" : undefined}
+              strokeLinejoin="round"
             />
           </Fragment>
         ))}

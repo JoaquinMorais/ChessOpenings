@@ -98,3 +98,121 @@ def test_weak_mode_with_no_weak_questions(session: Session):
         create_training_session(session, opening.id, mode="weak")
 
     assert "preguntas débiles" in str(exc.value)
+
+
+def _create_branch_tree(session: Session) -> tuple[Opening, dict[str, int]]:
+    opening = Opening(name="Weak Branches Training", color="white")
+    session.add(opening)
+    session.commit()
+    session.refresh(opening)
+
+    def add_node(
+        parent: Node | None,
+        ply: int,
+        san: str | None,
+        uci: str | None,
+        order_index: int = 0,
+    ) -> Node:
+        node = Node(
+            opening_id=opening.id,
+            parent_id=parent.id if parent else None,
+            move_san=san,
+            move_uci=uci,
+            fen=INITIAL_FEN,
+            ply=ply,
+            order_index=order_index,
+        )
+        session.add(node)
+        session.commit()
+        session.refresh(node)
+        return node
+
+    root = add_node(None, 0, None, None)
+    rival_a = add_node(root, 1, "e4", "e2e4")
+    question_b = add_node(rival_a, 2, "e5", "e7e5", 0)
+    rival_c = add_node(question_b, 3, "Nf3", "g1f3")
+    question_d = add_node(rival_c, 4, "Nc6", "b8c6")
+    add_node(question_d, 5, "Bc4", "f1c4")
+    question_e = add_node(rival_a, 2, "c5", "c7c5", 1)
+    rival_f = add_node(question_e, 3, "Nf3", "g1f3")
+    question_g = add_node(rival_f, 4, "Nc6", "b8c6")
+    add_node(question_g, 5, "Bc4", "f1c4")
+
+    return opening, {
+        "root": root.id,
+        "question_b": question_b.id,
+        "question_d": question_d.id,
+        "question_e": question_e.id,
+        "question_g": question_g.id,
+    }
+
+
+def test_weak_branches_includes_path_and_excludes_siblings(session: Session):
+    opening, ids = _create_branch_tree(session)
+    now = datetime.now(timezone.utc)
+    for name in ("root", "question_b", "question_e", "question_g"):
+        _add_stat(session, ids[name], 10, 10, now)
+
+    training_session, step = create_training_session(
+        session, opening.id, mode="weak_branches"
+    )
+
+    assert training_session.mode == "weak_branches"
+    assert training_session.questions_total == 3
+    assert step["node_id"] == ids["root"]
+    assert set(training_session.state["allowed_question_ids"]) == {
+        ids["root"],
+        ids["question_b"],
+        ids["question_d"],
+    }
+
+
+def test_weak_branches_uses_accuracy_after_eight_attempts(session: Session):
+    opening, ids = _create_branch_tree(session)
+    now = datetime.now(timezone.utc)
+    for name in ("root", "question_b", "question_e", "question_g"):
+        _add_stat(session, ids[name], 10, 10, now)
+    _add_stat(session, ids["question_d"], 8, 5, now)
+
+    training_session, _ = create_training_session(
+        session, opening.id, mode="weak_branches"
+    )
+
+    assert set(training_session.state["allowed_question_ids"]) == {
+        ids["root"],
+        ids["question_b"],
+        ids["question_d"],
+    }
+
+
+def test_weak_branches_ignores_strong_old_and_exact_threshold(session: Session):
+    opening, ids = _create_branch_tree(session)
+    old = datetime.now(timezone.utc) - timedelta(days=30)
+    for name in ("root", "question_b", "question_e", "question_g"):
+        _add_stat(session, ids[name], 10, 10, old)
+    _add_stat(session, ids["question_d"], 8, 6, old)
+
+    with pytest.raises(TrainingConflictError) as exc:
+        create_training_session(session, opening.id, mode="weak_branches")
+
+    assert "ramas débiles" in str(exc.value)
+
+
+def test_weak_branches_respects_from_node_scope(session: Session):
+    opening, ids = _create_branch_tree(session)
+    now = datetime.now(timezone.utc)
+    for name in ("root", "question_b", "question_e", "question_g"):
+        _add_stat(session, ids[name], 10, 10, now)
+
+    training_session, step = create_training_session(
+        session,
+        opening.id,
+        mode="weak_branches",
+        from_node_id=ids["question_b"],
+    )
+
+    assert step["node_id"] == ids["question_b"]
+    assert set(training_session.state["allowed_question_ids"]) == {
+        ids["question_b"],
+        ids["question_d"],
+    }

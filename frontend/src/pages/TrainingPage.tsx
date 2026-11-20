@@ -149,7 +149,12 @@ function TrainingPage() {
   const [searchParams] = useSearchParams();
   const openingId = Number(id);
   const modeParam = searchParams.get("mode");
-  const trainingMode: TrainingMode = modeParam === "weak" ? "weak" : "full";
+  const trainingMode: TrainingMode =
+    modeParam === "weak"
+      ? "weak"
+      : modeParam === "weak_branches"
+        ? "weak_branches"
+        : "full";
   const orderParam = searchParams.get("order");
   const branchOrder: TrainingBranchOrder =
     orderParam === "shuffled" ? "shuffled" : "ordered";

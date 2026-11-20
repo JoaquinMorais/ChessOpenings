@@ -58,4 +58,4 @@ Esto AMPLIA los otros docs; si hay contradiccion, manda este archivo.
 - Click derecho + arrastre: dibuja una flecha, al estilo chess.com/lichess. Las flechas se limpian al cambiar de posicion.
 - Si hay una pieza seleccionada o arrastrandose, click derecho cancela la seleccion/arrastre y no crea marca ni flecha. El menu contextual del navegador no aparece sobre el tablero.
 - Un click izquierdo en una casilla vacia o al seleccionar una pieza limpia las marcas y las flechas manuales; la seleccion pasa a la pieza clickeada. Las flechas automaticas de recomendaciones no se limpian.
-- En el editor, si una jugada recomendada por Stockfish ya existe como rama, su flecha lleva un contorno dorado y la recomendacion se marca como "Cubierta".
+- En el editor, si una jugada recomendada por Stockfish ya existe como rama, su flecha lleva un contorno rojo y la recomendacion se marca como "Cubierta".

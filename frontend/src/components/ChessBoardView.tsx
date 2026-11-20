@@ -128,15 +128,18 @@ function ChessBoardView({
   }, []);
 
   const cancelDragging = useCallback(() => {
-    if (!isDraggingPieceRef.current) {
-      return;
-    }
     suppressNextDropRef.current = true;
-    dndManagerRef.current?.getActions().endDrag();
-    isDraggingPieceRef.current = false;
-    setIsDraggingPiece(false);
-    setSelectedSquare(null);
-    clearDragDots();
+    try {
+      const manager = dndManagerRef.current;
+      if (manager?.getMonitor().isDragging()) {
+        manager.getActions().endDrag();
+      }
+    } finally {
+      isDraggingPieceRef.current = false;
+      setIsDraggingPiece(false);
+      setSelectedSquare(null);
+      clearDragDots();
+    }
   }, [clearDragDots]);
 
   useEffect(() => {
@@ -147,11 +150,28 @@ function ChessBoardView({
     suppressNextDropRef.current = false;
     setIsDraggingPiece(false);
     clearDragDots();
-  }, [fen, pickupAvailable, clearDragDots]);
+  }, [fen, clearDragDots]);
+
+  useEffect(() => {
+    if (pickupAvailable) {
+      return;
+    }
+    setSelectedSquare(null);
+    setPromotion(null);
+    if (isDraggingPieceRef.current) {
+      cancelDragging();
+    } else {
+      clearDragDots();
+    }
+  }, [pickupAvailable, cancelDragging, clearDragDots]);
 
   useEffect(() => {
     const handleRightButton = (event: MouseEvent | PointerEvent) => {
-      if (event.button !== 2 || !isDraggingPieceRef.current) {
+      if (event.button !== 2) {
+        return;
+      }
+      const leftButtonDown = (event.buttons & 1) === 1;
+      if (!leftButtonDown && !isDraggingPieceRef.current) {
         return;
       }
       event.preventDefault();
@@ -160,7 +180,8 @@ function ChessBoardView({
     };
 
     const handleContextMenu = (event: MouseEvent) => {
-      if (!isDraggingPieceRef.current) {
+      const leftButtonDown = (event.buttons & 1) === 1;
+      if (!leftButtonDown && !isDraggingPieceRef.current) {
         return;
       }
       event.preventDefault();

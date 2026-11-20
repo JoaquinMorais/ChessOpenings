@@ -64,16 +64,25 @@ function TrainingIndexPage() {
           id="training-mode"
           value={mode}
           onChange={(event) =>
-            setMode(event.target.value === "weak" ? "weak" : "full")
+            setMode(
+              event.target.value === "weak"
+                ? "weak"
+                : event.target.value === "weak_branches"
+                  ? "weak_branches"
+                  : "full",
+            )
           }
         >
           <option value="full">Completo</option>
           <option value="weak">Solo preguntas débiles</option>
+          <option value="weak_branches">Ramas débiles</option>
         </select>
         <p className="editor-info">
           {mode === "full"
             ? "Se recorren todas las preguntas del repertorio."
-            : "Se preguntan solo posiciones con acierto bajo, viejas o nunca practicadas."}
+            : mode === "weak"
+              ? "Se preguntan solo posiciones con acierto bajo, viejas o nunca practicadas."
+              : "Se entrenan los caminos completos hacia posiciones nuevas o con bajo acierto."}
         </p>
         <label htmlFor="training-order">Orden de ramas</label>
         <select

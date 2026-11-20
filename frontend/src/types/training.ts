@@ -1,7 +1,7 @@
 import type { ClassificationKey } from "./classifications";
 import type { Evaluation } from "./evaluation";
 
-export type TrainingMode = "full" | "weak";
+export type TrainingMode = "full" | "weak" | "weak_branches";
 export type TrainingBranchOrder = "ordered" | "shuffled";
 
 export interface TrainingSessionOptions {

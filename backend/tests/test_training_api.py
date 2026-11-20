@@ -280,3 +280,13 @@ def test_training_branch_order_payload(client: TestClient):
         json={"opening_id": opening_id, "branch_order": "invalid"},
     )
     assert response.status_code == 422
+
+
+def test_training_weak_branches_mode_payload(client: TestClient):
+    opening_id, _ = _create_linear_opening(client)
+
+    response = client.post(
+        SESSIONS,
+        json={"opening_id": opening_id, "mode": "weak_branches"},
+    )
+    assert response.status_code == 201

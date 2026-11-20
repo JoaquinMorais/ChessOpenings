@@ -111,6 +111,13 @@ def _question_ids(tree: TrainingNode, color: str) -> set[int]:
     return ids
 
 
+def _is_question_node(node: TrainingNode, color: str) -> bool:
+    return (
+        node.ply % 2 == (0 if color == "white" else 1)
+        and bool(node.children)
+    )
+
+
 def _weak_question_ids(
     session: Session,
     opening_id: int,
@@ -150,6 +157,40 @@ def _weak_question_ids(
     return weak
 
 
+def _weak_branch_question_ids(
+    session: Session,
+    opening_id: int,
+    tree: TrainingNode,
+    color: str,
+) -> set[int]:
+    stats = session.exec(
+        select(PositionStat)
+        .join(Node)
+        .where(Node.opening_id == opening_id)
+    ).all()
+    by_node = {stat.node_id: stat for stat in stats}
+    allowed: set[int] = set()
+
+    def walk(node: TrainingNode, question_path: list[int]) -> None:
+        path = question_path
+        if _is_question_node(node, color):
+            path = [*question_path, node.id]
+            stat = by_node.get(node.id)
+            is_weak = (
+                stat is None
+                or stat.attempts < 8
+                or stat.correct / stat.attempts * 100 < 70
+            )
+            if is_weak:
+                allowed.update(path)
+
+        for child in node.children:
+            walk(child, path)
+
+    walk(tree, [])
+    return allowed
+
+
 def create_training_session(
     session: Session,
     opening_id: int,
@@ -160,7 +201,7 @@ def create_training_session(
     opening = session.get(Opening, opening_id)
     if not opening:
         raise TrainingNotFoundError("La apertura no existe.")
-    if mode not in ("full", "weak"):
+    if mode not in ("full", "weak", "weak_branches"):
         raise TrainingConflictError("El modo de entrenamiento no es valido.")
     if branch_order not in ("ordered", "shuffled"):
         raise TrainingConflictError("El orden de ramas no es valido.")
@@ -173,11 +214,16 @@ def create_training_session(
             )
 
     tree = _build_training_tree(session, opening_id)
-    question_filter = (
-        _weak_question_ids(session, opening_id, tree, opening.color)
-        if mode == "weak"
-        else None
-    )
+    if mode == "weak":
+        question_filter = _weak_question_ids(
+            session, opening_id, tree, opening.color
+        )
+    elif mode == "weak_branches":
+        question_filter = _weak_branch_question_ids(
+            session, opening_id, tree, opening.color
+        )
+    else:
+        question_filter = None
 
     try:
         state, step = training_start(
@@ -196,6 +242,10 @@ def create_training_session(
             detail = "No hay preguntas débiles en esta rama."
         elif mode == "weak":
             detail = "No hay preguntas débiles para entrenar."
+        elif mode == "weak_branches" and from_node_id is not None:
+            detail = "No hay ramas débiles en esta rama."
+        elif mode == "weak_branches":
+            detail = "No hay ramas débiles para entrenar."
         elif from_node_id is not None:
             detail = "No hay preguntas en esta rama."
         else:
